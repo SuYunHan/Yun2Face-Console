@@ -4,7 +4,7 @@
 逐条 CLI 与失败分支表见 [docs/USAGE.md](docs/USAGE.md)，合成配置完整键表见
 [docs/ROUTE_GENERATION.md](docs/ROUTE_GENERATION.md)。技术细节与历史档案在本文第 4 部分。
 
-## 速览
+## 1.速览
 
 ### 统一网页控制台
 
@@ -22,7 +22,7 @@
   - 服务停机或任务停用期间错过的运行**不会补跑**：晚于计划时间超过 15 分钟直接顺延到下一次。
 - Ubuntu daemon：`deploy/yunfornewversion-web.service` 与 `deploy/install_systemd.sh`，可用 systemd 开机启动并自动重启网页服务。
 
-启动（默认仅监听本机 `127.0.0.1:8765`，Ubuntu 22.04 可直接使用）：
+启动（默认仅监听本机 `127.0.0.1:8765`）：
 
 ```bash
 python3 web_app.py --no-browser
@@ -54,4 +54,4 @@ develop：云运动（3.6.6）自动跑步脚本，解决 master 两个老大难
 └── dry_run_home.json       dry-run 离线夹具
 ```
 ## 2.更新日志
-将config.ini版本号修改为3.6.7,同时将定时运行中的任务查看改为点击学号查看对应任务，要不然太多任务看的眼花缭乱
+2026/10/28 将config.ini版本号修改为3.6.7,同时将定时运行中的任务查看改为点击学号查看对应任务，要不然太多任务看的眼花缭乱
