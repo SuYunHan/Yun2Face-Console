@@ -139,7 +139,7 @@ python tools/getUrl_Id.py --school "学校全称" --write --config config.ini
 python main.py
 
 # 全自动打表（指定配置与任务表目录）
-python main.py -a -f students_cofig/JW250220/config.ini -t tasks_fch
+python main.py -a -f students_cofig/<学号>/config.ini -t tasks_fch
 
 # 加轨迹漂移
 python main.py -a -f config.ini -t tasks_fch -d
@@ -152,8 +152,8 @@ python main.py --route-config examples/routes/deform_fch.json -f config.ini
 
 # 人脸任务：照片 + 标注 JSON；或视频（逐帧标注，需 opencv）
 python main.py -a -f config.ini -t tasks_fch \
-  --face-photo sutdents_face/JW250220/JW250220_D1.jpg \
-  --face-detection students_face_json/JW250220/JW250220_D1.json
+  --face-photo sutdents_face/<学号>/<人脸图片> \
+  --face-detection students_face_json/<学号>/<人脸图片标注json>
 
 # 登录重试 / 会话续期
 python main.py -a -f config.ini -t tasks_fch --login-retries 2 --login-retry-delay 3 --reauth-save-token
@@ -333,4 +333,4 @@ sudo journalctl -u yunfornewversion-web.service -f
 
 ## License
 
-[MIT](LICENSE) © 2026 YumYu
+[MIT](LICENSE) © 2026 SuYunHan
