@@ -2,12 +2,23 @@
 """yun_http 单元测试：只证明本地实现与静态证据/标准向量一致，不触碰网络。"""
 import base64
 import gzip
+import importlib.util
 import json
 import random
+from pathlib import Path
 
 import pytest
 
 import yun_http as yh
+
+
+def _load_sm2_ref():
+    """按文件路径加载本地参考实现，避免被环境里同名 `tests` 包遮蔽。"""
+    path = Path(__file__).with_name("sm2_ref.py")
+    spec = importlib.util.spec_from_file_location("_repo_sm2_ref", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 # 本地测试专用 SM2 密钥对（公私钥匹配，仅用于离线回环；不代表线上密钥）
 PUB = base64.b64decode(
@@ -67,7 +78,7 @@ def test_sm2_roundtrip_and_randomness():
 def test_sm2_wire_matches_gmssl_for_fixed_k(monkeypatch):
     """固定随机数 k 下，本实现与 gmssl 3.2.2.encrypt 输出逐位一致（wire 格式回归钉）。"""
     import gmssl.sm2 as gm_sm2
-    import tests.sm2_ref as ref  # noqa: F401  参考实现独立存在，便于对照
+    ref = _load_sm2_ref()   # 参考实现独立存在，便于对照
 
     def h(b):
         return hex(int.from_bytes(b, "big"))[2:].upper()
@@ -92,7 +103,7 @@ def test_sm2_wire_matches_gmssl_for_many_k(monkeypatch):
     """
     import random
     import gmssl.sm2 as gm_sm2
-    import tests.sm2_ref as ref
+    ref = _load_sm2_ref()
 
     def h(b):
         return hex(int.from_bytes(b, "big"))[2:].upper()

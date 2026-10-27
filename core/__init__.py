@@ -20,20 +20,34 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# 让 `from yun_http import ...` 能解析到本地最小替身（不引入任何加密依赖）
-if HERE not in sys.path:
-    sys.path.insert(0, HERE)
-
 
 def _load_rules():
-    """按文件路径加载规则代码，规避模块名冲突。"""
+    """按文件路径加载规则代码，规避模块名冲突。
+
+    `rules.py` 顶部 `from yun_http import (...)` 需要解析到本目录的最小替身；
+    这里只在**加载规则代码期间**临时把 `core/` 放到 sys.path 最前，加载完立即
+    恢复 sys.path 与 `sys.modules['yun_http']`，避免把全局的 `yun_http`
+    也替换成替身（否则同时跑全部测试时，别的模块会 import 到错误的 yun_http）。
+    """
     if "yun2face_rules" in sys.modules:
         return sys.modules["yun2face_rules"]
     path = os.path.join(HERE, "rules.py")
     spec = importlib.util.spec_from_file_location("yun2face_rules", path)
     module = importlib.util.module_from_spec(spec)
-    sys.modules["yun2face_rules"] = module
-    spec.loader.exec_module(module)
+    saved_yun_http = sys.modules.pop("yun_http", None)
+    sys.modules["yun2face_rules"] = module   # dataclass 需要 cls.__module__ 可见
+    sys.path.insert(0, HERE)
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        try:
+            sys.path.remove(HERE)
+        except ValueError:
+            pass
+        if saved_yun_http is not None:
+            sys.modules["yun_http"] = saved_yun_http
+        else:
+            sys.modules.pop("yun_http", None)
     return module
 
 
