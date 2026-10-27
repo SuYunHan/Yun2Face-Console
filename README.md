@@ -72,7 +72,7 @@ python web_app.py --port 9000 --no-browser
 ```
 students_cofig/<学号>/config.ini     # 每个学号的账号配置
 sutdents_face/<学号>/<照片>          # 人脸照片（目录名沿用历史拼写）
-students_face_json/<学号>/<stem>.json  # 人脸标注
+students_face_json/<学号>/<人脸图片标注json>.json  # 人脸标注
 web_data/runs/                       # 运行日志、runs.json、schedules.json
 out/                                 # 任务表锁定副本与缩略图缓存
 ```
