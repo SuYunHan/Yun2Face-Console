@@ -1,5 +1,5 @@
 # 云运动自动跑步脚本（develop 使用手册）
-##本仓库由[Zirconium233/yunForNewVersion](https://github.com/Zirconium233/yunForNewVersion)修改而来，更适合安邮宝宝体制
+# 本仓库由[Zirconium233/yunForNewVersion](https://github.com/Zirconium233/yunForNewVersion)修改而来，更适合安邮宝宝体制
 **文档导航**：本文是主使用文档；协议构造细节见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，
 逐条 CLI 与失败分支表见 [docs/USAGE.md](docs/USAGE.md)，合成配置完整键表见
 [docs/ROUTE_GENERATION.md](docs/ROUTE_GENERATION.md)。技术细节与历史档案在本文第 4 部分。
