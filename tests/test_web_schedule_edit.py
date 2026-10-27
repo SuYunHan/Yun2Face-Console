@@ -37,16 +37,16 @@ def schedule_store(monkeypatch):
 
 def _create(**overrides):
     body = {
-        "name": "JW250124 晨跑",
+        "name": "TEST_STUDENT 晨跑",
         "time_of_day": "07:30",
         "options": {
             "mode": "dry",
-            "project": "/opt/yunForNewVersion/students_cofig/JW250124",
-            "student": "JW250124",
-            "config": "/opt/yunForNewVersion/students_cofig/JW250124/config.ini",
+            "project": "/opt/yunForNewVersion/students_cofig/TEST_STUDENT",
+            "student": "TEST_STUDENT",
+            "config": "/opt/yunForNewVersion/students_cofig/TEST_STUDENT/config.ini",
             "task_folder": "tasks_fch",
             "task_file": "tasklist_1.json",
-            "face_student": "JW250124",
+            "face_student": "TEST_STUDENT",
             "face_photo": "JW250124_D1.jpg",
             "face_stem": "JW250124_D1",
         },
@@ -63,13 +63,13 @@ def test_update_schedule_edits_name_time_and_options_and_persists(schedule_store
 
     updated = web_app.update_schedule({
         "id": item["id"],
-        "name": "JW250124 夜跑",
+        "name": "TEST_STUDENT 夜跑",
         "time_of_day": "08:15",
         "options": {"mode": "real", "task_file": "tasklist_3.json"},
     })
 
     assert updated["id"] == item["id"]
-    assert updated["name"] == "JW250124 夜跑"
+    assert updated["name"] == "TEST_STUDENT 夜跑"
     assert updated["time_of_day"] == "08:15"
     # options 做浅合并：只改传入项，其余保持
     assert updated["options"]["mode"] == "real"
@@ -85,7 +85,7 @@ def test_update_schedule_edits_name_time_and_options_and_persists(schedule_store
     persisted = json.loads(
         (schedule_store / "schedules.json").read_text(encoding="utf-8"))
     saved = persisted[item["id"]]
-    assert saved["name"] == "JW250124 夜跑"
+    assert saved["name"] == "TEST_STUDENT 夜跑"
     assert saved["time_of_day"] == "08:15"
     assert saved["options"]["mode"] == "real"
 

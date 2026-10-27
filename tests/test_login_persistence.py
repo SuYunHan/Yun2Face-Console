@@ -29,7 +29,7 @@ def test_auth_failure_detects_expired_business_response():
 def test_web_real_command_enables_reauth_persistence():
     import web_app
     argv = web_app._main_argv({
-        "config": "F:/yunForNewVersion/students_cofig/JW250124/config.ini",
+        "config": "F:/yunForNewVersion/students_cofig/TEST_STUDENT/config.ini",
         "mode": "real",
     })
     assert "--reauth-save-token" in argv

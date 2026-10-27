@@ -64,7 +64,7 @@ async function boot() {
         + `${S.students.reduce((a, s) => a + s.annos, 0)} 份标注。`
         + '左侧选学号看照片，顶部「跑步任务」看任务表。');
 
-    // 深链接：?student=JW250246&open=L1.jpg 直接进到某个学号、可选自动打开编辑
+    // 深链接：?student=<学号>&open=<照片> 直接进到某个学号、可选自动打开编辑
     //          ?tab=task 直接切到跑步任务页
     const q = new URLSearchParams(location.search);
     if (q.get('tab') === 'task') {

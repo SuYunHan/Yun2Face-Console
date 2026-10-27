@@ -864,7 +864,7 @@ def discover_projects() -> List[Dict[str, Any]]:
 
     约定（本机现状就是如此）：
         <projects_root>/yunForNewVersion-<学号>/   ← 各学号的独立项目
-        <projects_root>/yunForNewVersion-develop/   ← 本项目那份（JW250246）
+        <projects_root>/yunForNewVersion-develop/   ← 本项目自身那份
     兼容按学校再分一层：<projects_root>/<学校>/yunForNewVersion-<学号>/
 
     每个项目对应用户自己的一份 config.ini 与自己的 tasks_* 目录——
@@ -922,7 +922,7 @@ def discover_projects() -> List[Dict[str, Any]]:
                          if f.lower().endswith(".json")])
                 rec["task_dirs"].append({"name": sub, "files": n})
         out.append(rec)
-    # 默认项目排最前（它就是 JW250246 那份）
+    # 默认项目排最前（即本项目自身）
     def key(r):
         return (r["path"] != os.path.abspath(CFG["project"]), r["student"], r["name"])
     return sorted(out, key=key)

@@ -36,7 +36,7 @@ def schedule_store(monkeypatch):
 
 def _create(**overrides):
     body = {
-        "name": "JW250124 晨跑",
+        "name": "TEST_STUDENT 晨跑",
         "time_of_day": "07:30",
         "options": {"mode": "dry", "project": "/tmp/proj",
                     "task_folder": "tasks_fch", "task_file": "tasklist_1.json"},
