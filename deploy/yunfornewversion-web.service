@@ -1,0 +1,24 @@
+[Unit]
+Description=yunForNewVersion web console and scheduler
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/yunForNewVersion
+ExecStart=/usr/bin/python3.12 /opt/yunForNewVersion/web_app.py --host 0.0.0.0 --port 8765 --no-browser
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONIOENCODING=utf-8
+
+# Change this user if /opt/yunForNewVersion belongs to another account.
+User=ubuntu
+Group=ubuntu
+
+# Logs are available with: journalctl -u yunfornewversion-web.service -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

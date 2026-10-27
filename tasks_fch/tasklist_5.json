@@ -1,0 +1,4332 @@
+{
+  "ok": true,
+  "msg": "操作成功",
+  "code": 200,
+  "data": {
+    "id": "2109964390817824769",
+    "studentId": "JW250239",
+    "raId": 588,
+    "raType": "T3",
+    "deviceName": "iPhone 15 Pro",
+    "sysEdition": "iOS_27.2",
+    "appEdition": "3.6.6",
+    "recordStartTime": "2026-10-13 19:08:06",
+    "recordEndTime": "2026-10-13 19:25:50",
+    "recordMileage": 1.62,
+    "recodePace": 10.68,
+    "recodeCadence": 117,
+    "recodeDislikes": 5,
+    "recordRunningPath": "https://yunzhijiaoyuoss.oss-cn-hangzhou-internal.aliyuncs.com/points/2026/10/13/6823c9c31ab54440be8754782ccf64aa.zip",
+    "isQualified": "1",
+    "remake": "0|",
+    "appealStatus": "R5",
+    "duration": 1045,
+    "managePoints": "117.233761,31.848972|Y|0=117.233682,31.850346|Y|1=117.233226,31.850057|Y|2=117.234341,31.849234|Y|3=117.234079,31.850007|Y|4",
+    "isMorning": "R0",
+    "pointsList": [
+      {
+        "point": "117.234036,31.848982",
+        "speed": 0,
+        "runStatus": 1,
+        "runTime": "0",
+        "isFence": "Y",
+        "runStep": "0",
+        "runMileage": "0",
+        "ts": "1791889690"
+      },
+      {
+        "point": "117.234054,31.848982",
+        "speed": 0,
+        "runStatus": 1,
+        "runTime": "0",
+        "isFence": "Y",
+        "runStep": "0",
+        "runMileage": "2",
+        "ts": "1791889690"
+      },
+      {
+        "point": "117.234074,31.848991",
+        "speed": 1.01,
+        "runStatus": 1,
+        "runTime": "3",
+        "isFence": "Y",
+        "runStep": "4",
+        "runMileage": "4",
+        "ts": "1791889693"
+      },
+      {
+        "point": "117.234093,31.849000",
+        "speed": 6.91,
+        "runStatus": 1,
+        "runTime": "5",
+        "isFence": "Y",
+        "runStep": "10",
+        "runMileage": "6",
+        "ts": "1791889695"
+      },
+      {
+        "point": "117.234110,31.849011",
+        "speed": 7.65,
+        "runStatus": 1,
+        "runTime": "7",
+        "isFence": "Y",
+        "runStep": "16",
+        "runMileage": "8",
+        "ts": "1791889697"
+      },
+      {
+        "point": "117.234127,31.849023",
+        "speed": 8,
+        "runStatus": 1,
+        "runTime": "9",
+        "isFence": "Y",
+        "runStep": "22",
+        "runMileage": "10",
+        "ts": "1791889699"
+      },
+      {
+        "point": "117.234143,31.849037",
+        "speed": 7.97,
+        "runStatus": 1,
+        "runTime": "11",
+        "isFence": "Y",
+        "runStep": "26",
+        "runMileage": "12",
+        "ts": "1791889701"
+      },
+      {
+        "point": "117.234160,31.849052",
+        "speed": 8.19,
+        "runStatus": 1,
+        "runTime": "14",
+        "isFence": "Y",
+        "runStep": "32",
+        "runMileage": "15",
+        "ts": "1791889704"
+      },
+      {
+        "point": "117.234176,31.849068",
+        "speed": 8.58,
+        "runStatus": 1,
+        "runTime": "16",
+        "isFence": "Y",
+        "runStep": "38",
+        "runMileage": "17",
+        "ts": "1791889706"
+      },
+      {
+        "point": "117.234189,31.849085",
+        "speed": 8.69,
+        "runStatus": 1,
+        "runTime": "18",
+        "isFence": "Y",
+        "runStep": "38",
+        "runMileage": "19",
+        "ts": "1791889708"
+      },
+      {
+        "point": "117.234201,31.849104",
+        "speed": 9.19,
+        "runStatus": 1,
+        "runTime": "21",
+        "isFence": "Y",
+        "runStep": "50",
+        "runMileage": "22",
+        "ts": "1791889711"
+      },
+      {
+        "point": "117.234212,31.849125",
+        "speed": 8.65,
+        "runStatus": 1,
+        "runTime": "24",
+        "isFence": "Y",
+        "runStep": "55",
+        "runMileage": "24",
+        "ts": "1791889714"
+      },
+      {
+        "point": "117.234222,31.849145",
+        "speed": 8.57,
+        "runStatus": 1,
+        "runTime": "26",
+        "isFence": "Y",
+        "runStep": "55",
+        "runMileage": "27",
+        "ts": "1791889716"
+      },
+      {
+        "point": "117.234230,31.849167",
+        "speed": 8.33,
+        "runStatus": 1,
+        "runTime": "29",
+        "isFence": "Y",
+        "runStep": "65",
+        "runMileage": "29",
+        "ts": "1791889719"
+      },
+      {
+        "point": "117.234238,31.849189",
+        "speed": 8.46,
+        "runStatus": 1,
+        "runTime": "32",
+        "isFence": "Y",
+        "runStep": "69",
+        "runMileage": "32",
+        "ts": "1791889722"
+      },
+      {
+        "point": "117.234244,31.849212",
+        "speed": 8.63,
+        "runStatus": 1,
+        "runTime": "35",
+        "isFence": "Y",
+        "runStep": "75",
+        "runMileage": "34",
+        "ts": "1791889725"
+      },
+      {
+        "point": "117.234249,31.849235",
+        "speed": 8.33,
+        "runStatus": 1,
+        "runTime": "38",
+        "isFence": "Y",
+        "runStep": "80",
+        "runMileage": "37",
+        "ts": "1791889728"
+      },
+      {
+        "point": "117.234251,31.849260",
+        "speed": 8.48,
+        "runStatus": 1,
+        "runTime": "41",
+        "isFence": "Y",
+        "runStep": "84",
+        "runMileage": "40",
+        "ts": "1791889731"
+      },
+      {
+        "point": "117.234252,31.849285",
+        "speed": 8.54,
+        "runStatus": 1,
+        "runTime": "44",
+        "isFence": "Y",
+        "runStep": "94",
+        "runMileage": "42",
+        "ts": "1791889734"
+      },
+      {
+        "point": "117.234252,31.849311",
+        "speed": 8.28,
+        "runStatus": 1,
+        "runTime": "47",
+        "isFence": "Y",
+        "runStep": "98",
+        "runMileage": "45",
+        "ts": "1791889737"
+      },
+      {
+        "point": "117.234252,31.849339",
+        "speed": 8,
+        "runStatus": 1,
+        "runTime": "50",
+        "isFence": "Y",
+        "runStep": "103",
+        "runMileage": "48",
+        "ts": "1791889740"
+      },
+      {
+        "point": "117.234251,31.849365",
+        "speed": 8.07,
+        "runStatus": 1,
+        "runTime": "52",
+        "isFence": "Y",
+        "runStep": "107",
+        "runMileage": "51",
+        "ts": "1791889742"
+      },
+      {
+        "point": "117.234249,31.849393",
+        "speed": 7.61,
+        "runStatus": 1,
+        "runTime": "54",
+        "isFence": "Y",
+        "runStep": "107",
+        "runMileage": "54",
+        "ts": "1791889744"
+      },
+      {
+        "point": "117.234245,31.849426",
+        "speed": 7.13,
+        "runStatus": 1,
+        "runTime": "57",
+        "isFence": "Y",
+        "runStep": "117",
+        "runMileage": "58",
+        "ts": "1791889747"
+      },
+      {
+        "point": "117.234240,31.849460",
+        "speed": 6.83,
+        "runStatus": 1,
+        "runTime": "59",
+        "isFence": "Y",
+        "runStep": "117",
+        "runMileage": "62",
+        "ts": "1791889749"
+      },
+      {
+        "point": "117.234235,31.849494",
+        "speed": 6.46,
+        "runStatus": 1,
+        "runTime": "61",
+        "isFence": "Y",
+        "runStep": "123",
+        "runMileage": "66",
+        "ts": "1791889751"
+      },
+      {
+        "point": "117.234228,31.849529",
+        "speed": 6.07,
+        "runStatus": 1,
+        "runTime": "63",
+        "isFence": "Y",
+        "runStep": "128",
+        "runMileage": "70",
+        "ts": "1791889753"
+      },
+      {
+        "point": "117.234220,31.849567",
+        "speed": 5.72,
+        "runStatus": 1,
+        "runTime": "65",
+        "isFence": "Y",
+        "runStep": "133",
+        "runMileage": "74",
+        "ts": "1791889755"
+      },
+      {
+        "point": "117.234211,31.849607",
+        "speed": 5.38,
+        "runStatus": 1,
+        "runTime": "67",
+        "isFence": "Y",
+        "runStep": "139",
+        "runMileage": "79",
+        "ts": "1791889757"
+      },
+      {
+        "point": "117.234202,31.849648",
+        "speed": 5.03,
+        "runStatus": 1,
+        "runTime": "69",
+        "isFence": "Y",
+        "runStep": "139",
+        "runMileage": "83",
+        "ts": "1791889759"
+      },
+      {
+        "point": "117.234192,31.849689",
+        "speed": 5,
+        "runStatus": 1,
+        "runTime": "71",
+        "isFence": "Y",
+        "runStep": "144",
+        "runMileage": "88",
+        "ts": "1791889761"
+      },
+      {
+        "point": "117.234179,31.849736",
+        "speed": 4.97,
+        "runStatus": 1,
+        "runTime": "74",
+        "isFence": "Y",
+        "runStep": "150",
+        "runMileage": "93",
+        "ts": "1791889764"
+      },
+      {
+        "point": "117.234165,31.849777",
+        "speed": 4.9,
+        "runStatus": 1,
+        "runTime": "76",
+        "isFence": "Y",
+        "runStep": "155",
+        "runMileage": "98",
+        "ts": "1791889766"
+      },
+      {
+        "point": "117.234153,31.849814",
+        "speed": 4.93,
+        "runStatus": 1,
+        "runTime": "78",
+        "isFence": "Y",
+        "runStep": "160",
+        "runMileage": "102",
+        "ts": "1791889768"
+      },
+      {
+        "point": "117.234140,31.849850",
+        "speed": 4.97,
+        "runStatus": 1,
+        "runTime": "80",
+        "isFence": "Y",
+        "runStep": "166",
+        "runMileage": "126",
+        "ts": "1791889770"
+      },
+      {
+        "point": "117.234091,31.849989",
+        "speed": 5.02,
+        "runStatus": 1,
+        "runTime": "83",
+        "isFence": "Y",
+        "runStep": "171",
+        "runMileage": "131",
+        "ts": "1791889773"
+      },
+      {
+        "point": "117.234074,31.850031",
+        "speed": 5.25,
+        "runStatus": 1,
+        "runTime": "85",
+        "isFence": "Y",
+        "runStep": "176",
+        "runMileage": "135",
+        "ts": "1791889775"
+      },
+      {
+        "point": "117.234060,31.850060",
+        "speed": 5.33,
+        "runStatus": 1,
+        "runTime": "88",
+        "isFence": "Y",
+        "runStep": "182",
+        "runMileage": "139",
+        "ts": "1791889778"
+      },
+      {
+        "point": "117.234050,31.850085",
+        "speed": 5.66,
+        "runStatus": 1,
+        "runTime": "90",
+        "isFence": "Y",
+        "runStep": "187",
+        "runMileage": "143",
+        "ts": "1791889780"
+      },
+      {
+        "point": "117.234039,31.850110",
+        "speed": 5.76,
+        "runStatus": 1,
+        "runTime": "93",
+        "isFence": "Y",
+        "runStep": "192",
+        "runMileage": "148",
+        "ts": "1791889783"
+      },
+      {
+        "point": "117.234028,31.850132",
+        "speed": 5.82,
+        "runStatus": 1,
+        "runTime": "95",
+        "isFence": "Y",
+        "runStep": "197",
+        "runMileage": "151",
+        "ts": "1791889785"
+      },
+      {
+        "point": "117.234018,31.850152",
+        "speed": 6.02,
+        "runStatus": 1,
+        "runTime": "97",
+        "isFence": "Y",
+        "runStep": "197",
+        "runMileage": "154",
+        "ts": "1791889787"
+      },
+      {
+        "point": "117.234007,31.850172",
+        "speed": 6.17,
+        "runStatus": 1,
+        "runTime": "99",
+        "isFence": "Y",
+        "runStep": "203",
+        "runMileage": "158",
+        "ts": "1791889789"
+      },
+      {
+        "point": "117.233995,31.850193",
+        "speed": 6.17,
+        "runStatus": 1,
+        "runTime": "101",
+        "isFence": "Y",
+        "runStep": "208",
+        "runMileage": "161",
+        "ts": "1791889791"
+      },
+      {
+        "point": "117.233981,31.850213",
+        "speed": 7.84,
+        "runStatus": 1,
+        "runTime": "103",
+        "isFence": "Y",
+        "runStep": "213",
+        "runMileage": "164",
+        "ts": "1791889793"
+      },
+      {
+        "point": "117.233965,31.850232",
+        "speed": 8.27,
+        "runStatus": 1,
+        "runTime": "105",
+        "isFence": "Y",
+        "runStep": "219",
+        "runMileage": "168",
+        "ts": "1791889795"
+      },
+      {
+        "point": "117.233946,31.850252",
+        "speed": 7.94,
+        "runStatus": 1,
+        "runTime": "108",
+        "isFence": "Y",
+        "runStep": "224",
+        "runMileage": "172",
+        "ts": "1791889798"
+      },
+      {
+        "point": "117.233922,31.850275",
+        "speed": 8.04,
+        "runStatus": 1,
+        "runTime": "111",
+        "isFence": "Y",
+        "runStep": "229",
+        "runMileage": "177",
+        "ts": "1791889801"
+      },
+      {
+        "point": "117.233896,31.850296",
+        "speed": 7.74,
+        "runStatus": 1,
+        "runTime": "114",
+        "isFence": "Y",
+        "runStep": "234",
+        "runMileage": "181",
+        "ts": "1791889804"
+      },
+      {
+        "point": "117.233870,31.850314",
+        "speed": 7.87,
+        "runStatus": 1,
+        "runTime": "116",
+        "isFence": "Y",
+        "runStep": "240",
+        "runMileage": "184",
+        "ts": "1791889806"
+      },
+      {
+        "point": "117.233845,31.850330",
+        "speed": 7.79,
+        "runStatus": 1,
+        "runTime": "118",
+        "isFence": "Y",
+        "runStep": "245",
+        "runMileage": "188",
+        "ts": "1791889808"
+      },
+      {
+        "point": "117.233820,31.850344",
+        "speed": 7.72,
+        "runStatus": 1,
+        "runTime": "120",
+        "isFence": "Y",
+        "runStep": "245",
+        "runMileage": "191",
+        "ts": "1791889810"
+      },
+      {
+        "point": "117.233791,31.850357",
+        "speed": 7.67,
+        "runStatus": 1,
+        "runTime": "123",
+        "isFence": "Y",
+        "runStep": "255",
+        "runMileage": "195",
+        "ts": "1791889813"
+      },
+      {
+        "point": "117.233757,31.850369",
+        "speed": 7.82,
+        "runStatus": 1,
+        "runTime": "126",
+        "isFence": "Y",
+        "runStep": "261",
+        "runMileage": "199",
+        "ts": "1791889816"
+      },
+      {
+        "point": "117.233725,31.850379",
+        "speed": 7.95,
+        "runStatus": 1,
+        "runTime": "128",
+        "isFence": "Y",
+        "runStep": "266",
+        "runMileage": "203",
+        "ts": "1791889818"
+      },
+      {
+        "point": "117.233691,31.850387",
+        "speed": 7.55,
+        "runStatus": 1,
+        "runTime": "131",
+        "isFence": "Y",
+        "runStep": "271",
+        "runMileage": "207",
+        "ts": "1791889821"
+      },
+      {
+        "point": "117.233658,31.850392",
+        "speed": 7.44,
+        "runStatus": 1,
+        "runTime": "133",
+        "isFence": "Y",
+        "runStep": "276",
+        "runMileage": "210",
+        "ts": "1791889823"
+      },
+      {
+        "point": "117.233624,31.850395",
+        "speed": 7.21,
+        "runStatus": 1,
+        "runTime": "136",
+        "isFence": "Y",
+        "runStep": "281",
+        "runMileage": "215",
+        "ts": "1791889826"
+      },
+      {
+        "point": "117.233586,31.850396",
+        "speed": 7.45,
+        "runStatus": 1,
+        "runTime": "139",
+        "isFence": "Y",
+        "runStep": "287",
+        "runMileage": "219",
+        "ts": "1791889829"
+      },
+      {
+        "point": "117.233548,31.850395",
+        "speed": 7.65,
+        "runStatus": 1,
+        "runTime": "142",
+        "isFence": "Y",
+        "runStep": "292",
+        "runMileage": "223",
+        "ts": "1791889832"
+      },
+      {
+        "point": "117.233512,31.850391",
+        "speed": 7.83,
+        "runStatus": 1,
+        "runTime": "144",
+        "isFence": "Y",
+        "runStep": "297",
+        "runMileage": "227",
+        "ts": "1791889834"
+      },
+      {
+        "point": "117.233480,31.850385",
+        "speed": 7.51,
+        "runStatus": 1,
+        "runTime": "146",
+        "isFence": "Y",
+        "runStep": "302",
+        "runMileage": "230",
+        "ts": "1791889836"
+      },
+      {
+        "point": "117.233450,31.850378",
+        "speed": 7.27,
+        "runStatus": 1,
+        "runTime": "148",
+        "isFence": "Y",
+        "runStep": "302",
+        "runMileage": "233",
+        "ts": "1791889838"
+      },
+      {
+        "point": "117.233419,31.850369",
+        "speed": 7.33,
+        "runStatus": 1,
+        "runTime": "150",
+        "isFence": "Y",
+        "runStep": "307",
+        "runMileage": "236",
+        "ts": "1791889840"
+      },
+      {
+        "point": "117.233388,31.850357",
+        "speed": 7.01,
+        "runStatus": 1,
+        "runTime": "153",
+        "isFence": "Y",
+        "runStep": "313",
+        "runMileage": "241",
+        "ts": "1791889843"
+      },
+      {
+        "point": "117.233355,31.850339",
+        "speed": 7.3,
+        "runStatus": 1,
+        "runTime": "156",
+        "isFence": "Y",
+        "runStep": "323",
+        "runMileage": "245",
+        "ts": "1791889846"
+      },
+      {
+        "point": "117.233323,31.850319",
+        "speed": 7.21,
+        "runStatus": 1,
+        "runTime": "159",
+        "isFence": "Y",
+        "runStep": "329",
+        "runMileage": "250",
+        "ts": "1791889849"
+      },
+      {
+        "point": "117.233296,31.850299",
+        "speed": 7.19,
+        "runStatus": 1,
+        "runTime": "161",
+        "isFence": "Y",
+        "runStep": "329",
+        "runMileage": "253",
+        "ts": "1791889851"
+      },
+      {
+        "point": "117.233272,31.850279",
+        "speed": 6.89,
+        "runStatus": 1,
+        "runTime": "163",
+        "isFence": "Y",
+        "runStep": "331",
+        "runMileage": "256",
+        "ts": "1791889853"
+      },
+      {
+        "point": "117.233249,31.850256",
+        "speed": 6.98,
+        "runStatus": 1,
+        "runTime": "166",
+        "isFence": "Y",
+        "runStep": "336",
+        "runMileage": "261",
+        "ts": "1791889856"
+      },
+      {
+        "point": "117.233228,31.850232",
+        "speed": 7.21,
+        "runStatus": 1,
+        "runTime": "168",
+        "isFence": "Y",
+        "runStep": "341",
+        "runMileage": "264",
+        "ts": "1791889858"
+      },
+      {
+        "point": "117.233210,31.850208",
+        "speed": 7.23,
+        "runStatus": 1,
+        "runTime": "170",
+        "isFence": "Y",
+        "runStep": "347",
+        "runMileage": "267",
+        "ts": "1791889860"
+      },
+      {
+        "point": "117.233195,31.850184",
+        "speed": 7.25,
+        "runStatus": 1,
+        "runTime": "172",
+        "isFence": "Y",
+        "runStep": "352",
+        "runMileage": "270",
+        "ts": "1791889862"
+      },
+      {
+        "point": "117.233183,31.850157",
+        "speed": 6.97,
+        "runStatus": 1,
+        "runTime": "175",
+        "isFence": "Y",
+        "runStep": "358",
+        "runMileage": "275",
+        "ts": "1791889865"
+      },
+      {
+        "point": "117.233172,31.850129",
+        "speed": 6.95,
+        "runStatus": 1,
+        "runTime": "177",
+        "isFence": "Y",
+        "runStep": "362",
+        "runMileage": "278",
+        "ts": "1791889867"
+      },
+      {
+        "point": "117.233164,31.850103",
+        "speed": 6.7,
+        "runStatus": 1,
+        "runTime": "179",
+        "isFence": "Y",
+        "runStep": "368",
+        "runMileage": "281",
+        "ts": "1791889869"
+      },
+      {
+        "point": "117.233159,31.850073",
+        "speed": 6.79,
+        "runStatus": 1,
+        "runTime": "182",
+        "isFence": "Y",
+        "runStep": "374",
+        "runMileage": "286",
+        "ts": "1791889872"
+      },
+      {
+        "point": "117.233157,31.850041",
+        "speed": 7.05,
+        "runStatus": 1,
+        "runTime": "185",
+        "isFence": "Y",
+        "runStep": "379",
+        "runMileage": "290",
+        "ts": "1791889875"
+      },
+      {
+        "point": "117.233157,31.850011",
+        "speed": 6.97,
+        "runStatus": 1,
+        "runTime": "187",
+        "isFence": "Y",
+        "runStep": "384",
+        "runMileage": "293",
+        "ts": "1791889877"
+      },
+      {
+        "point": "117.233159,31.849980",
+        "speed": 7.03,
+        "runStatus": 1,
+        "runTime": "190",
+        "isFence": "Y",
+        "runStep": "389",
+        "runMileage": "298",
+        "ts": "1791889880"
+      },
+      {
+        "point": "117.233163,31.849949",
+        "speed": 7.16,
+        "runStatus": 1,
+        "runTime": "192",
+        "isFence": "Y",
+        "runStep": "394",
+        "runMileage": "301",
+        "ts": "1791889882"
+      },
+      {
+        "point": "117.233167,31.849919",
+        "speed": 7.15,
+        "runStatus": 1,
+        "runTime": "195",
+        "isFence": "Y",
+        "runStep": "399",
+        "runMileage": "305",
+        "ts": "1791889885"
+      },
+      {
+        "point": "117.233173,31.849889",
+        "speed": 7.02,
+        "runStatus": 1,
+        "runTime": "197",
+        "isFence": "Y",
+        "runStep": "405",
+        "runMileage": "308",
+        "ts": "1791889887"
+      },
+      {
+        "point": "117.233179,31.849861",
+        "speed": 7.03,
+        "runStatus": 1,
+        "runTime": "199",
+        "isFence": "Y",
+        "runStep": "405",
+        "runMileage": "311",
+        "ts": "1791889889"
+      },
+      {
+        "point": "117.233186,31.849830",
+        "speed": 6.98,
+        "runStatus": 1,
+        "runTime": "202",
+        "isFence": "Y",
+        "runStep": "415",
+        "runMileage": "316",
+        "ts": "1791889892"
+      },
+      {
+        "point": "117.233194,31.849799",
+        "speed": 6.78,
+        "runStatus": 1,
+        "runTime": "204",
+        "isFence": "Y",
+        "runStep": "415",
+        "runMileage": "319",
+        "ts": "1791889894"
+      },
+      {
+        "point": "117.233202,31.849770",
+        "speed": 6.51,
+        "runStatus": 1,
+        "runTime": "206",
+        "isFence": "Y",
+        "runStep": "421",
+        "runMileage": "322",
+        "ts": "1791889896"
+      },
+      {
+        "point": "117.233211,31.849737",
+        "speed": 6.51,
+        "runStatus": 1,
+        "runTime": "209",
+        "isFence": "Y",
+        "runStep": "426",
+        "runMileage": "327",
+        "ts": "1791889899"
+      },
+      {
+        "point": "117.233222,31.849706",
+        "speed": 6.36,
+        "runStatus": 1,
+        "runTime": "211",
+        "isFence": "Y",
+        "runStep": "432",
+        "runMileage": "330",
+        "ts": "1791889901"
+      },
+      {
+        "point": "117.233232,31.849676",
+        "speed": 6.41,
+        "runStatus": 1,
+        "runTime": "213",
+        "isFence": "Y",
+        "runStep": "437",
+        "runMileage": "333",
+        "ts": "1791889903"
+      },
+      {
+        "point": "117.233243,31.849648",
+        "speed": 6.1,
+        "runStatus": 1,
+        "runTime": "215",
+        "isFence": "Y",
+        "runStep": "443",
+        "runMileage": "337",
+        "ts": "1791889905"
+      },
+      {
+        "point": "117.233257,31.849621",
+        "speed": 6.13,
+        "runStatus": 1,
+        "runTime": "217",
+        "isFence": "Y",
+        "runStep": "443",
+        "runMileage": "340",
+        "ts": "1791889907"
+      },
+      {
+        "point": "117.233270,31.849592",
+        "speed": 6.12,
+        "runStatus": 1,
+        "runTime": "219",
+        "isFence": "Y",
+        "runStep": "448",
+        "runMileage": "344",
+        "ts": "1791889909"
+      },
+      {
+        "point": "117.233283,31.849563",
+        "speed": 5.79,
+        "runStatus": 1,
+        "runTime": "221",
+        "isFence": "Y",
+        "runStep": "454",
+        "runMileage": "347",
+        "ts": "1791889911"
+      },
+      {
+        "point": "117.233298,31.849531",
+        "speed": 5.8,
+        "runStatus": 1,
+        "runTime": "224",
+        "isFence": "Y",
+        "runStep": "460",
+        "runMileage": "352",
+        "ts": "1791889914"
+      },
+      {
+        "point": "117.233312,31.849498",
+        "speed": 5.95,
+        "runStatus": 1,
+        "runTime": "226",
+        "isFence": "Y",
+        "runStep": "465",
+        "runMileage": "356",
+        "ts": "1791889916"
+      },
+      {
+        "point": "117.233325,31.849465",
+        "speed": 5.65,
+        "runStatus": 1,
+        "runTime": "229",
+        "isFence": "Y",
+        "runStep": "471",
+        "runMileage": "360",
+        "ts": "1791889919"
+      },
+      {
+        "point": "117.233339,31.849433",
+        "speed": 5.87,
+        "runStatus": 1,
+        "runTime": "231",
+        "isFence": "Y",
+        "runStep": "476",
+        "runMileage": "363",
+        "ts": "1791889921"
+      },
+      {
+        "point": "117.233352,31.849404",
+        "speed": 5.9,
+        "runStatus": 1,
+        "runTime": "233",
+        "isFence": "Y",
+        "runStep": "482",
+        "runMileage": "366",
+        "ts": "1791889923"
+      },
+      {
+        "point": "117.233364,31.849376",
+        "speed": 5.93,
+        "runStatus": 1,
+        "runTime": "235",
+        "isFence": "Y",
+        "runStep": "486",
+        "runMileage": "370",
+        "ts": "1791889925"
+      },
+      {
+        "point": "117.233377,31.849348",
+        "speed": 5.94,
+        "runStatus": 1,
+        "runTime": "237",
+        "isFence": "Y",
+        "runStep": "486",
+        "runMileage": "373",
+        "ts": "1791889927"
+      },
+      {
+        "point": "117.233390,31.849321",
+        "speed": 5.97,
+        "runStatus": 1,
+        "runTime": "239",
+        "isFence": "Y",
+        "runStep": "492",
+        "runMileage": "376",
+        "ts": "1791889929"
+      },
+      {
+        "point": "117.233403,31.849295",
+        "speed": 6.03,
+        "runStatus": 1,
+        "runTime": "241",
+        "isFence": "Y",
+        "runStep": "498",
+        "runMileage": "379",
+        "ts": "1791889931"
+      },
+      {
+        "point": "117.233417,31.849269",
+        "speed": 5.77,
+        "runStatus": 1,
+        "runTime": "243",
+        "isFence": "Y",
+        "runStep": "503",
+        "runMileage": "382",
+        "ts": "1791889933"
+      },
+      {
+        "point": "117.233431,31.849243",
+        "speed": 5.86,
+        "runStatus": 1,
+        "runTime": "245",
+        "isFence": "Y",
+        "runStep": "503",
+        "runMileage": "385",
+        "ts": "1791889935"
+      },
+      {
+        "point": "117.233446,31.849217",
+        "speed": 5.59,
+        "runStatus": 1,
+        "runTime": "247",
+        "isFence": "Y",
+        "runStep": "505",
+        "runMileage": "388",
+        "ts": "1791889937"
+      },
+      {
+        "point": "117.233463,31.849193",
+        "speed": 5.7,
+        "runStatus": 1,
+        "runTime": "249",
+        "isFence": "Y",
+        "runStep": "511",
+        "runMileage": "392",
+        "ts": "1791889939"
+      },
+      {
+        "point": "117.233483,31.849166",
+        "speed": 5.73,
+        "runStatus": 1,
+        "runTime": "252",
+        "isFence": "Y",
+        "runStep": "516",
+        "runMileage": "396",
+        "ts": "1791889942"
+      },
+      {
+        "point": "117.233504,31.849141",
+        "speed": 5.98,
+        "runStatus": 1,
+        "runTime": "254",
+        "isFence": "Y",
+        "runStep": "522",
+        "runMileage": "399",
+        "ts": "1791889944"
+      },
+      {
+        "point": "117.233525,31.849119",
+        "speed": 6.06,
+        "runStatus": 1,
+        "runTime": "256",
+        "isFence": "Y",
+        "runStep": "527",
+        "runMileage": "402",
+        "ts": "1791889946"
+      },
+      {
+        "point": "117.233548,31.849098",
+        "speed": 6.14,
+        "runStatus": 1,
+        "runTime": "258",
+        "isFence": "Y",
+        "runStep": "532",
+        "runMileage": "406",
+        "ts": "1791889948"
+      },
+      {
+        "point": "117.233571,31.849078",
+        "speed": 6.15,
+        "runStatus": 1,
+        "runTime": "260",
+        "isFence": "Y",
+        "runStep": "532",
+        "runMileage": "409",
+        "ts": "1791889950"
+      },
+      {
+        "point": "117.233595,31.849060",
+        "speed": 6.19,
+        "runStatus": 1,
+        "runTime": "262",
+        "isFence": "Y",
+        "runStep": "538",
+        "runMileage": "412",
+        "ts": "1791889952"
+      },
+      {
+        "point": "117.233620,31.849043",
+        "speed": 6.21,
+        "runStatus": 1,
+        "runTime": "264",
+        "isFence": "Y",
+        "runStep": "543",
+        "runMileage": "415",
+        "ts": "1791889954"
+      },
+      {
+        "point": "117.233645,31.849027",
+        "speed": 6.28,
+        "runStatus": 1,
+        "runTime": "266",
+        "isFence": "Y",
+        "runStep": "548",
+        "runMileage": "418",
+        "ts": "1791889956"
+      },
+      {
+        "point": "117.233672,31.849013",
+        "speed": 6.3,
+        "runStatus": 1,
+        "runTime": "268",
+        "isFence": "Y",
+        "runStep": "548",
+        "runMileage": "422",
+        "ts": "1791889958"
+      },
+      {
+        "point": "117.233705,31.849000",
+        "speed": 6.01,
+        "runStatus": 1,
+        "runTime": "271",
+        "isFence": "Y",
+        "runStep": "559",
+        "runMileage": "426",
+        "ts": "1791889961"
+      },
+      {
+        "point": "117.233744,31.848989",
+        "speed": 6.3,
+        "runStatus": 1,
+        "runTime": "274",
+        "isFence": "Y",
+        "runStep": "564",
+        "runMileage": "431",
+        "ts": "1791889964"
+      },
+      {
+        "point": "117.233785,31.848980",
+        "speed": 6.53,
+        "runStatus": 1,
+        "runTime": "277",
+        "isFence": "Y",
+        "runStep": "570",
+        "runMileage": "436",
+        "ts": "1791889967"
+      },
+      {
+        "point": "117.233821,31.848975",
+        "speed": 6.82,
+        "runStatus": 1,
+        "runTime": "279",
+        "isFence": "Y",
+        "runStep": "576",
+        "runMileage": "439",
+        "ts": "1791889969"
+      },
+      {
+        "point": "117.233855,31.848972",
+        "speed": 6.87,
+        "runStatus": 1,
+        "runTime": "281",
+        "isFence": "Y",
+        "runStep": "581",
+        "runMileage": "442",
+        "ts": "1791889971"
+      },
+      {
+        "point": "117.233888,31.848971",
+        "speed": 6.88,
+        "runStatus": 1,
+        "runTime": "283",
+        "isFence": "Y",
+        "runStep": "581",
+        "runMileage": "445",
+        "ts": "1791889973"
+      },
+      {
+        "point": "117.233920,31.848971",
+        "speed": 6.93,
+        "runStatus": 1,
+        "runTime": "285",
+        "isFence": "Y",
+        "runStep": "587",
+        "runMileage": "449",
+        "ts": "1791889975"
+      },
+      {
+        "point": "117.233954,31.848975",
+        "speed": 6.91,
+        "runStatus": 1,
+        "runTime": "288",
+        "isFence": "Y",
+        "runStep": "591",
+        "runMileage": "452",
+        "ts": "1791889978"
+      },
+      {
+        "point": "117.233986,31.848980",
+        "speed": 7.21,
+        "runStatus": 1,
+        "runTime": "290",
+        "isFence": "Y",
+        "runStep": "597",
+        "runMileage": "455",
+        "ts": "1791889980"
+      },
+      {
+        "point": "117.234017,31.848988",
+        "speed": 6.99,
+        "runStatus": 1,
+        "runTime": "293",
+        "isFence": "Y",
+        "runStep": "602",
+        "runMileage": "459",
+        "ts": "1791889983"
+      },
+      {
+        "point": "117.234047,31.848998",
+        "speed": 7.14,
+        "runStatus": 1,
+        "runTime": "296",
+        "isFence": "Y",
+        "runStep": "607",
+        "runMileage": "463",
+        "ts": "1791889986"
+      },
+      {
+        "point": "117.234075,31.849010",
+        "speed": 7.2,
+        "runStatus": 1,
+        "runTime": "298",
+        "isFence": "Y",
+        "runStep": "612",
+        "runMileage": "466",
+        "ts": "1791889988"
+      },
+      {
+        "point": "117.234102,31.849024",
+        "speed": 7.35,
+        "runStatus": 1,
+        "runTime": "301",
+        "isFence": "Y",
+        "runStep": "617",
+        "runMileage": "470",
+        "ts": "1791889991"
+      },
+      {
+        "point": "117.234129,31.849040",
+        "speed": 7.71,
+        "runStatus": 1,
+        "runTime": "304",
+        "isFence": "Y",
+        "runStep": "628",
+        "runMileage": "474",
+        "ts": "1791889994"
+      },
+      {
+        "point": "117.234153,31.849058",
+        "speed": 7.98,
+        "runStatus": 1,
+        "runTime": "306",
+        "isFence": "Y",
+        "runStep": "628",
+        "runMileage": "478",
+        "ts": "1791889996"
+      },
+      {
+        "point": "117.234175,31.849079",
+        "speed": 8.05,
+        "runStatus": 1,
+        "runTime": "309",
+        "isFence": "Y",
+        "runStep": "638",
+        "runMileage": "482",
+        "ts": "1791889999"
+      },
+      {
+        "point": "117.234196,31.849100",
+        "speed": 8.01,
+        "runStatus": 1,
+        "runTime": "311",
+        "isFence": "Y",
+        "runStep": "638",
+        "runMileage": "485",
+        "ts": "1791890001"
+      },
+      {
+        "point": "117.234213,31.849123",
+        "speed": 8.03,
+        "runStatus": 1,
+        "runTime": "314",
+        "isFence": "Y",
+        "runStep": "648",
+        "runMileage": "488",
+        "ts": "1791890004"
+      },
+      {
+        "point": "117.234229,31.849148",
+        "speed": 8.14,
+        "runStatus": 1,
+        "runTime": "317",
+        "isFence": "Y",
+        "runStep": "653",
+        "runMileage": "493",
+        "ts": "1791890007"
+      },
+      {
+        "point": "117.234242,31.849172",
+        "speed": 7.97,
+        "runStatus": 1,
+        "runTime": "319",
+        "isFence": "Y",
+        "runStep": "653",
+        "runMileage": "496",
+        "ts": "1791890009"
+      },
+      {
+        "point": "117.234254,31.849199",
+        "speed": 8.03,
+        "runStatus": 1,
+        "runTime": "322",
+        "isFence": "Y",
+        "runStep": "663",
+        "runMileage": "500",
+        "ts": "1791890012"
+      },
+      {
+        "point": "117.234264,31.849225",
+        "speed": 7.87,
+        "runStatus": 1,
+        "runTime": "324",
+        "isFence": "Y",
+        "runStep": "663",
+        "runMileage": "503",
+        "ts": "1791890014"
+      },
+      {
+        "point": "117.234271,31.849252",
+        "speed": 7.54,
+        "runStatus": 1,
+        "runTime": "327",
+        "isFence": "Y",
+        "runStep": "674",
+        "runMileage": "507",
+        "ts": "1791890017"
+      },
+      {
+        "point": "117.234276,31.849282",
+        "speed": 7.79,
+        "runStatus": 1,
+        "runTime": "330",
+        "isFence": "Y",
+        "runStep": "679",
+        "runMileage": "511",
+        "ts": "1791890020"
+      },
+      {
+        "point": "117.234279,31.849313",
+        "speed": 7.67,
+        "runStatus": 1,
+        "runTime": "333",
+        "isFence": "Y",
+        "runStep": "684",
+        "runMileage": "515",
+        "ts": "1791890023"
+      },
+      {
+        "point": "117.234280,31.849344",
+        "speed": 7.95,
+        "runStatus": 1,
+        "runTime": "336",
+        "isFence": "Y",
+        "runStep": "690",
+        "runMileage": "519",
+        "ts": "1791890026"
+      },
+      {
+        "point": "117.234279,31.849375",
+        "speed": 7.82,
+        "runStatus": 1,
+        "runTime": "339",
+        "isFence": "Y",
+        "runStep": "695",
+        "runMileage": "523",
+        "ts": "1791890029"
+      },
+      {
+        "point": "117.234277,31.849407",
+        "speed": 7.68,
+        "runStatus": 1,
+        "runTime": "342",
+        "isFence": "Y",
+        "runStep": "705",
+        "runMileage": "527",
+        "ts": "1791890032"
+      },
+      {
+        "point": "117.234272,31.849440",
+        "speed": 7.87,
+        "runStatus": 1,
+        "runTime": "345",
+        "isFence": "Y",
+        "runStep": "711",
+        "runMileage": "531",
+        "ts": "1791890035"
+      },
+      {
+        "point": "117.234266,31.849472",
+        "speed": 7.71,
+        "runStatus": 1,
+        "runTime": "348",
+        "isFence": "Y",
+        "runStep": "716",
+        "runMileage": "535",
+        "ts": "1791890038"
+      },
+      {
+        "point": "117.234260,31.849503",
+        "speed": 7.93,
+        "runStatus": 1,
+        "runTime": "350",
+        "isFence": "Y",
+        "runStep": "721",
+        "runMileage": "538",
+        "ts": "1791890040"
+      },
+      {
+        "point": "117.234253,31.849531",
+        "speed": 7.59,
+        "runStatus": 1,
+        "runTime": "352",
+        "isFence": "Y",
+        "runStep": "721",
+        "runMileage": "541",
+        "ts": "1791890042"
+      },
+      {
+        "point": "117.234248,31.849563",
+        "speed": 7.3,
+        "runStatus": 1,
+        "runTime": "355",
+        "isFence": "Y",
+        "runStep": "732",
+        "runMileage": "546",
+        "ts": "1791890045"
+      },
+      {
+        "point": "117.234242,31.849596",
+        "speed": 7.13,
+        "runStatus": 1,
+        "runTime": "357",
+        "isFence": "Y",
+        "runStep": "732",
+        "runMileage": "550",
+        "ts": "1791890047"
+      },
+      {
+        "point": "117.234234,31.849630",
+        "speed": 6.75,
+        "runStatus": 1,
+        "runTime": "360",
+        "isFence": "Y",
+        "runStep": "742",
+        "runMileage": "554",
+        "ts": "1791890050"
+      },
+      {
+        "point": "117.234224,31.849664",
+        "speed": 6.72,
+        "runStatus": 1,
+        "runTime": "363",
+        "isFence": "Y",
+        "runStep": "747",
+        "runMileage": "558",
+        "ts": "1791890053"
+      },
+      {
+        "point": "117.234214,31.849697",
+        "speed": 6.7,
+        "runStatus": 1,
+        "runTime": "366",
+        "isFence": "Y",
+        "runStep": "752",
+        "runMileage": "561",
+        "ts": "1791890056"
+      },
+      {
+        "point": "117.234204,31.849729",
+        "speed": 6.75,
+        "runStatus": 1,
+        "runTime": "369",
+        "isFence": "Y",
+        "runStep": "758",
+        "runMileage": "565",
+        "ts": "1791890059"
+      },
+      {
+        "point": "117.234191,31.849761",
+        "speed": 6.67,
+        "runStatus": 1,
+        "runTime": "372",
+        "isFence": "Y",
+        "runStep": "763",
+        "runMileage": "570",
+        "ts": "1791890062"
+      },
+      {
+        "point": "117.234177,31.849792",
+        "speed": 6.84,
+        "runStatus": 1,
+        "runTime": "374",
+        "isFence": "Y",
+        "runStep": "768",
+        "runMileage": "573",
+        "ts": "1791890064"
+      },
+      {
+        "point": "117.234164,31.849821",
+        "speed": 6.86,
+        "runStatus": 1,
+        "runTime": "376",
+        "isFence": "Y",
+        "runStep": "773",
+        "runMileage": "577",
+        "ts": "1791890066"
+      },
+      {
+        "point": "117.234151,31.849851",
+        "speed": 6.59,
+        "runStatus": 1,
+        "runTime": "378",
+        "isFence": "Y",
+        "runStep": "779",
+        "runMileage": "580",
+        "ts": "1791890068"
+      },
+      {
+        "point": "117.234137,31.849884",
+        "speed": 6.63,
+        "runStatus": 1,
+        "runTime": "381",
+        "isFence": "Y",
+        "runStep": "784",
+        "runMileage": "584",
+        "ts": "1791890071"
+      },
+      {
+        "point": "117.234123,31.849919",
+        "speed": 6.56,
+        "runStatus": 1,
+        "runTime": "384",
+        "isFence": "Y",
+        "runStep": "789",
+        "runMileage": "588",
+        "ts": "1791890074"
+      },
+      {
+        "point": "117.234109,31.849954",
+        "speed": 6.54,
+        "runStatus": 1,
+        "runTime": "387",
+        "isFence": "Y",
+        "runStep": "792",
+        "runMileage": "592",
+        "ts": "1791890077"
+      },
+      {
+        "point": "117.234098,31.849985",
+        "speed": 6.55,
+        "runStatus": 1,
+        "runTime": "389",
+        "isFence": "Y",
+        "runStep": "798",
+        "runMileage": "595",
+        "ts": "1791890079"
+      },
+      {
+        "point": "117.234086,31.850016",
+        "speed": 6.29,
+        "runStatus": 1,
+        "runTime": "392",
+        "isFence": "Y",
+        "runStep": "803",
+        "runMileage": "600",
+        "ts": "1791890082"
+      },
+      {
+        "point": "117.234072,31.850050",
+        "speed": 6.24,
+        "runStatus": 1,
+        "runTime": "395",
+        "isFence": "Y",
+        "runStep": "808",
+        "runMileage": "604",
+        "ts": "1791890085"
+      },
+      {
+        "point": "117.234056,31.850082",
+        "speed": 6.52,
+        "runStatus": 1,
+        "runTime": "398",
+        "isFence": "Y",
+        "runStep": "818",
+        "runMileage": "608",
+        "ts": "1791890088"
+      },
+      {
+        "point": "117.234038,31.850113",
+        "speed": 6.79,
+        "runStatus": 1,
+        "runTime": "401",
+        "isFence": "Y",
+        "runStep": "823",
+        "runMileage": "612",
+        "ts": "1791890091"
+      },
+      {
+        "point": "117.234019,31.850143",
+        "speed": 7.05,
+        "runStatus": 1,
+        "runTime": "404",
+        "isFence": "Y",
+        "runStep": "829",
+        "runMileage": "616",
+        "ts": "1791890094"
+      },
+      {
+        "point": "117.233997,31.850171",
+        "speed": 7.08,
+        "runStatus": 1,
+        "runTime": "407",
+        "isFence": "Y",
+        "runStep": "834",
+        "runMileage": "620",
+        "ts": "1791890097"
+      },
+      {
+        "point": "117.233973,31.850199",
+        "speed": 7.13,
+        "runStatus": 1,
+        "runTime": "410",
+        "isFence": "Y",
+        "runStep": "839",
+        "runMileage": "624",
+        "ts": "1791890100"
+      },
+      {
+        "point": "117.233947,31.850226",
+        "speed": 7.12,
+        "runStatus": 1,
+        "runTime": "413",
+        "isFence": "Y",
+        "runStep": "844",
+        "runMileage": "629",
+        "ts": "1791890103"
+      },
+      {
+        "point": "117.233922,31.850250",
+        "speed": 7.45,
+        "runStatus": 1,
+        "runTime": "415",
+        "isFence": "Y",
+        "runStep": "850",
+        "runMileage": "632",
+        "ts": "1791890105"
+      },
+      {
+        "point": "117.233894,31.850272",
+        "speed": 7.23,
+        "runStatus": 1,
+        "runTime": "418",
+        "isFence": "Y",
+        "runStep": "855",
+        "runMileage": "636",
+        "ts": "1791890108"
+      },
+      {
+        "point": "117.233863,31.850293",
+        "speed": 7.28,
+        "runStatus": 1,
+        "runTime": "421",
+        "isFence": "Y",
+        "runStep": "865",
+        "runMileage": "640",
+        "ts": "1791890111"
+      },
+      {
+        "point": "117.233830,31.850313",
+        "speed": 7.29,
+        "runStatus": 1,
+        "runTime": "424",
+        "isFence": "Y",
+        "runStep": "869",
+        "runMileage": "644",
+        "ts": "1791890114"
+      },
+      {
+        "point": "117.233795,31.850330",
+        "speed": 7.3,
+        "runStatus": 1,
+        "runTime": "427",
+        "isFence": "Y",
+        "runStep": "874",
+        "runMileage": "649",
+        "ts": "1791890117"
+      },
+      {
+        "point": "117.233760,31.850345",
+        "speed": 7.33,
+        "runStatus": 1,
+        "runTime": "430",
+        "isFence": "Y",
+        "runStep": "880",
+        "runMileage": "653",
+        "ts": "1791890120"
+      },
+      {
+        "point": "117.233723,31.850357",
+        "speed": 7.38,
+        "runStatus": 1,
+        "runTime": "433",
+        "isFence": "Y",
+        "runStep": "885",
+        "runMileage": "657",
+        "ts": "1791890123"
+      },
+      {
+        "point": "117.233685,31.850366",
+        "speed": 7.4,
+        "runStatus": 1,
+        "runTime": "436",
+        "isFence": "Y",
+        "runStep": "890",
+        "runMileage": "661",
+        "ts": "1791890126"
+      },
+      {
+        "point": "117.233651,31.850373",
+        "speed": 7.48,
+        "runStatus": 1,
+        "runTime": "438",
+        "isFence": "Y",
+        "runStep": "895",
+        "runMileage": "664",
+        "ts": "1791890128"
+      },
+      {
+        "point": "117.233619,31.850376",
+        "speed": 7.64,
+        "runStatus": 1,
+        "runTime": "440",
+        "isFence": "Y",
+        "runStep": "900",
+        "runMileage": "667",
+        "ts": "1791890130"
+      },
+      {
+        "point": "117.233584,31.850377",
+        "speed": 7.46,
+        "runStatus": 1,
+        "runTime": "443",
+        "isFence": "Y",
+        "runStep": "906",
+        "runMileage": "671",
+        "ts": "1791890133"
+      },
+      {
+        "point": "117.233545,31.850376",
+        "speed": 7.49,
+        "runStatus": 1,
+        "runTime": "446",
+        "isFence": "Y",
+        "runStep": "911",
+        "runMileage": "676",
+        "ts": "1791890136"
+      },
+      {
+        "point": "117.233509,31.850372",
+        "speed": 7.49,
+        "runStatus": 1,
+        "runTime": "448",
+        "isFence": "Y",
+        "runStep": "916",
+        "runMileage": "679",
+        "ts": "1791890138"
+      },
+      {
+        "point": "117.233474,31.850365",
+        "speed": 7.28,
+        "runStatus": 1,
+        "runTime": "451",
+        "isFence": "Y",
+        "runStep": "921",
+        "runMileage": "683",
+        "ts": "1791890141"
+      },
+      {
+        "point": "117.233439,31.850356",
+        "speed": 7.28,
+        "runStatus": 1,
+        "runTime": "453",
+        "isFence": "Y",
+        "runStep": "927",
+        "runMileage": "687",
+        "ts": "1791890143"
+      },
+      {
+        "point": "117.233407,31.850344",
+        "speed": 7.06,
+        "runStatus": 1,
+        "runTime": "456",
+        "isFence": "Y",
+        "runStep": "932",
+        "runMileage": "691",
+        "ts": "1791890146"
+      },
+      {
+        "point": "117.233375,31.850330",
+        "speed": 7.07,
+        "runStatus": 1,
+        "runTime": "458",
+        "isFence": "Y",
+        "runStep": "937",
+        "runMileage": "695",
+        "ts": "1791890148"
+      },
+      {
+        "point": "117.233346,31.850315",
+        "speed": 7.13,
+        "runStatus": 1,
+        "runTime": "460",
+        "isFence": "Y",
+        "runStep": "943",
+        "runMileage": "698",
+        "ts": "1791890150"
+      },
+      {
+        "point": "117.233320,31.850299",
+        "speed": 7.13,
+        "runStatus": 1,
+        "runTime": "462",
+        "isFence": "Y",
+        "runStep": "948",
+        "runMileage": "701",
+        "ts": "1791890152"
+      },
+      {
+        "point": "117.233296,31.850282",
+        "speed": 6.9,
+        "runStatus": 1,
+        "runTime": "464",
+        "isFence": "Y",
+        "runStep": "948",
+        "runMileage": "704",
+        "ts": "1791890154"
+      },
+      {
+        "point": "117.233273,31.850263",
+        "speed": 6.67,
+        "runStatus": 1,
+        "runTime": "466",
+        "isFence": "Y",
+        "runStep": "954",
+        "runMileage": "707",
+        "ts": "1791890156"
+      },
+      {
+        "point": "117.233253,31.850244",
+        "speed": 6.75,
+        "runStatus": 1,
+        "runTime": "468",
+        "isFence": "Y",
+        "runStep": "959",
+        "runMileage": "710",
+        "ts": "1791890158"
+      },
+      {
+        "point": "117.233234,31.850223",
+        "speed": 6.47,
+        "runStatus": 1,
+        "runTime": "470",
+        "isFence": "Y",
+        "runStep": "965",
+        "runMileage": "714",
+        "ts": "1791890160"
+      },
+      {
+        "point": "117.233215,31.850199",
+        "speed": 6.53,
+        "runStatus": 1,
+        "runTime": "473",
+        "isFence": "Y",
+        "runStep": "969",
+        "runMileage": "718",
+        "ts": "1791890163"
+      },
+      {
+        "point": "117.233199,31.850171",
+        "speed": 6.48,
+        "runStatus": 1,
+        "runTime": "476",
+        "isFence": "Y",
+        "runStep": "975",
+        "runMileage": "722",
+        "ts": "1791890166"
+      },
+      {
+        "point": "117.233186,31.850145",
+        "speed": 6.85,
+        "runStatus": 1,
+        "runTime": "478",
+        "isFence": "Y",
+        "runStep": "980",
+        "runMileage": "725",
+        "ts": "1791890168"
+      },
+      {
+        "point": "117.233176,31.850118",
+        "speed": 6.9,
+        "runStatus": 1,
+        "runTime": "481",
+        "isFence": "Y",
+        "runStep": "986",
+        "runMileage": "729",
+        "ts": "1791890171"
+      },
+      {
+        "point": "117.233168,31.850088",
+        "speed": 7.21,
+        "runStatus": 1,
+        "runTime": "484",
+        "isFence": "Y",
+        "runStep": "990",
+        "runMileage": "733",
+        "ts": "1791890174"
+      },
+      {
+        "point": "117.233163,31.850060",
+        "speed": 7.5,
+        "runStatus": 1,
+        "runTime": "486",
+        "isFence": "Y",
+        "runStep": "996",
+        "runMileage": "737",
+        "ts": "1791890176"
+      },
+      {
+        "point": "117.233161,31.850033",
+        "speed": 7.52,
+        "runStatus": 1,
+        "runTime": "488",
+        "isFence": "Y",
+        "runStep": "998",
+        "runMileage": "740",
+        "ts": "1791890178"
+      },
+      {
+        "point": "117.233160,31.850004",
+        "speed": 7.54,
+        "runStatus": 1,
+        "runTime": "491",
+        "isFence": "Y",
+        "runStep": "1005",
+        "runMileage": "744",
+        "ts": "1791890181"
+      },
+      {
+        "point": "117.233162,31.849971",
+        "speed": 7.67,
+        "runStatus": 1,
+        "runTime": "494",
+        "isFence": "Y",
+        "runStep": "1010",
+        "runMileage": "749",
+        "ts": "1791890184"
+      },
+      {
+        "point": "117.233165,31.849937",
+        "speed": 7.48,
+        "runStatus": 1,
+        "runTime": "497",
+        "isFence": "Y",
+        "runStep": "1015",
+        "runMileage": "753",
+        "ts": "1791890187"
+      },
+      {
+        "point": "117.233170,31.849904",
+        "speed": 7.28,
+        "runStatus": 1,
+        "runTime": "499",
+        "isFence": "Y",
+        "runStep": "1021",
+        "runMileage": "757",
+        "ts": "1791890189"
+      },
+      {
+        "point": "117.233176,31.849872",
+        "speed": 7.23,
+        "runStatus": 1,
+        "runTime": "502",
+        "isFence": "Y",
+        "runStep": "1025",
+        "runMileage": "761",
+        "ts": "1791890192"
+      },
+      {
+        "point": "117.233184,31.849837",
+        "speed": 7.11,
+        "runStatus": 1,
+        "runTime": "505",
+        "isFence": "Y",
+        "runStep": "1033",
+        "runMileage": "765",
+        "ts": "1791890195"
+      },
+      {
+        "point": "117.233193,31.849802",
+        "speed": 6.95,
+        "runStatus": 1,
+        "runTime": "508",
+        "isFence": "Y",
+        "runStep": "1039",
+        "runMileage": "770",
+        "ts": "1791890198"
+      },
+      {
+        "point": "117.233201,31.849767",
+        "speed": 7.1,
+        "runStatus": 1,
+        "runTime": "511",
+        "isFence": "Y",
+        "runStep": "1044",
+        "runMileage": "774",
+        "ts": "1791890201"
+      },
+      {
+        "point": "117.233210,31.849735",
+        "speed": 7.26,
+        "runStatus": 1,
+        "runTime": "513",
+        "isFence": "Y",
+        "runStep": "1050",
+        "runMileage": "777",
+        "ts": "1791890203"
+      },
+      {
+        "point": "117.233218,31.849704",
+        "speed": 6.93,
+        "runStatus": 1,
+        "runTime": "515",
+        "isFence": "Y",
+        "runStep": "1050",
+        "runMileage": "781",
+        "ts": "1791890205"
+      },
+      {
+        "point": "117.233226,31.849671",
+        "speed": 6.57,
+        "runStatus": 1,
+        "runTime": "517",
+        "isFence": "Y",
+        "runStep": "1056",
+        "runMileage": "784",
+        "ts": "1791890207"
+      },
+      {
+        "point": "117.233236,31.849637",
+        "speed": 6.33,
+        "runStatus": 1,
+        "runTime": "520",
+        "isFence": "Y",
+        "runStep": "1061",
+        "runMileage": "789",
+        "ts": "1791890210"
+      },
+      {
+        "point": "117.233248,31.849599",
+        "speed": 6.51,
+        "runStatus": 1,
+        "runTime": "523",
+        "isFence": "Y",
+        "runStep": "1072",
+        "runMileage": "793",
+        "ts": "1791890213"
+      },
+      {
+        "point": "117.233260,31.849566",
+        "speed": 6.48,
+        "runStatus": 1,
+        "runTime": "525",
+        "isFence": "Y",
+        "runStep": "1072",
+        "runMileage": "796",
+        "ts": "1791890215"
+      },
+      {
+        "point": "117.233272,31.849536",
+        "speed": 6.28,
+        "runStatus": 1,
+        "runTime": "527",
+        "isFence": "Y",
+        "runStep": "1077",
+        "runMileage": "800",
+        "ts": "1791890217"
+      },
+      {
+        "point": "117.233284,31.849506",
+        "speed": 6.02,
+        "runStatus": 1,
+        "runTime": "529",
+        "isFence": "Y",
+        "runStep": "1079",
+        "runMileage": "803",
+        "ts": "1791890219"
+      },
+      {
+        "point": "117.233298,31.849474",
+        "speed": 5.78,
+        "runStatus": 1,
+        "runTime": "532",
+        "isFence": "Y",
+        "runStep": "1085",
+        "runMileage": "807",
+        "ts": "1791890222"
+      },
+      {
+        "point": "117.233312,31.849443",
+        "speed": 6.05,
+        "runStatus": 1,
+        "runTime": "534",
+        "isFence": "Y",
+        "runStep": "1089",
+        "runMileage": "811",
+        "ts": "1791890224"
+      },
+      {
+        "point": "117.233326,31.849413",
+        "speed": 6.06,
+        "runStatus": 1,
+        "runTime": "537",
+        "isFence": "Y",
+        "runStep": "1091",
+        "runMileage": "814",
+        "ts": "1791890227"
+      },
+      {
+        "point": "117.233339,31.849383",
+        "speed": 6.39,
+        "runStatus": 1,
+        "runTime": "539",
+        "isFence": "Y",
+        "runStep": "1095",
+        "runMileage": "818",
+        "ts": "1791890229"
+      },
+      {
+        "point": "117.233352,31.849355",
+        "speed": 6.12,
+        "runStatus": 1,
+        "runTime": "541",
+        "isFence": "Y",
+        "runStep": "1101",
+        "runMileage": "821",
+        "ts": "1791890231"
+      },
+      {
+        "point": "117.233366,31.849326",
+        "speed": 5.88,
+        "runStatus": 1,
+        "runTime": "543",
+        "isFence": "Y",
+        "runStep": "1101",
+        "runMileage": "825",
+        "ts": "1791890233"
+      },
+      {
+        "point": "117.233381,31.849295",
+        "speed": 5.93,
+        "runStatus": 1,
+        "runTime": "546",
+        "isFence": "Y",
+        "runStep": "1108",
+        "runMileage": "829",
+        "ts": "1791890236"
+      },
+      {
+        "point": "117.233396,31.849264",
+        "speed": 6.17,
+        "runStatus": 1,
+        "runTime": "548",
+        "isFence": "Y",
+        "runStep": "1108",
+        "runMileage": "832",
+        "ts": "1791890238"
+      },
+      {
+        "point": "117.233412,31.849235",
+        "speed": 6.25,
+        "runStatus": 1,
+        "runTime": "551",
+        "isFence": "Y",
+        "runStep": "1119",
+        "runMileage": "836",
+        "ts": "1791890241"
+      },
+      {
+        "point": "117.233430,31.849204",
+        "speed": 6.21,
+        "runStatus": 1,
+        "runTime": "554",
+        "isFence": "Y",
+        "runStep": "1124",
+        "runMileage": "841",
+        "ts": "1791890244"
+      },
+      {
+        "point": "117.233450,31.849173",
+        "speed": 6.47,
+        "runStatus": 1,
+        "runTime": "557",
+        "isFence": "Y",
+        "runStep": "1129",
+        "runMileage": "845",
+        "ts": "1791890247"
+      },
+      {
+        "point": "117.233472,31.849143",
+        "speed": 6.41,
+        "runStatus": 1,
+        "runTime": "560",
+        "isFence": "Y",
+        "runStep": "1135",
+        "runMileage": "850",
+        "ts": "1791890250"
+      },
+      {
+        "point": "117.233495,31.849115",
+        "speed": 6.6,
+        "runStatus": 1,
+        "runTime": "562",
+        "isFence": "Y",
+        "runStep": "1138",
+        "runMileage": "853",
+        "ts": "1791890252"
+      },
+      {
+        "point": "117.233520,31.849089",
+        "speed": 6.62,
+        "runStatus": 1,
+        "runTime": "565",
+        "isFence": "Y",
+        "runStep": "1142",
+        "runMileage": "856",
+        "ts": "1791890255"
+      },
+      {
+        "point": "117.233546,31.849066",
+        "speed": 7.02,
+        "runStatus": 1,
+        "runTime": "568",
+        "isFence": "Y",
+        "runStep": "1148",
+        "runMileage": "861",
+        "ts": "1791890258"
+      },
+      {
+        "point": "117.233576,31.849044",
+        "speed": 7.07,
+        "runStatus": 1,
+        "runTime": "571",
+        "isFence": "Y",
+        "runStep": "1152",
+        "runMileage": "865",
+        "ts": "1791890261"
+      },
+      {
+        "point": "117.233607,31.849025",
+        "speed": 7.34,
+        "runStatus": 1,
+        "runTime": "574",
+        "isFence": "Y",
+        "runStep": "1162",
+        "runMileage": "869",
+        "ts": "1791890264"
+      },
+      {
+        "point": "117.233638,31.849008",
+        "speed": 7.5,
+        "runStatus": 1,
+        "runTime": "577",
+        "isFence": "Y",
+        "runStep": "1168",
+        "runMileage": "873",
+        "ts": "1791890267"
+      },
+      {
+        "point": "117.233669,31.848993",
+        "speed": 7.51,
+        "runStatus": 1,
+        "runTime": "579",
+        "isFence": "Y",
+        "runStep": "1174",
+        "runMileage": "876",
+        "ts": "1791890269"
+      },
+      {
+        "point": "117.233702,31.848979",
+        "speed": 7.29,
+        "runStatus": 1,
+        "runTime": "583",
+        "isFence": "Y",
+        "runStep": "1178",
+        "runMileage": "880",
+        "ts": "1791890273"
+      },
+      {
+        "point": "117.233736,31.848968",
+        "speed": 7.73,
+        "runStatus": 1,
+        "runTime": "587",
+        "isFence": "Y",
+        "runStep": "1188",
+        "runMileage": "883",
+        "ts": "1791890277"
+      },
+      {
+        "point": "117.233767,31.848961",
+        "speed": 8.46,
+        "runStatus": 1,
+        "runTime": "589",
+        "isFence": "Y",
+        "runStep": "1188",
+        "runMileage": "888",
+        "ts": "1791890279"
+      },
+      {
+        "point": "117.233799,31.848958",
+        "speed": 8.36,
+        "runStatus": 1,
+        "runTime": "592",
+        "isFence": "Y",
+        "runStep": "1198",
+        "runMileage": "892",
+        "ts": "1791890282"
+      },
+      {
+        "point": "117.233835,31.848958",
+        "speed": 8.57,
+        "runStatus": 1,
+        "runTime": "595",
+        "isFence": "Y",
+        "runStep": "1204",
+        "runMileage": "896",
+        "ts": "1791890285"
+      },
+      {
+        "point": "117.233869,31.848962",
+        "speed": 8.59,
+        "runStatus": 1,
+        "runTime": "597",
+        "isFence": "Y",
+        "runStep": "1208",
+        "runMileage": "900",
+        "ts": "1791890287"
+      },
+      {
+        "point": "117.233903,31.848967",
+        "speed": 8.48,
+        "runStatus": 1,
+        "runTime": "600",
+        "isFence": "Y",
+        "runStep": "1214",
+        "runMileage": "904",
+        "ts": "1791890290"
+      },
+      {
+        "point": "117.233939,31.848974",
+        "speed": 8.36,
+        "runStatus": 1,
+        "runTime": "602",
+        "isFence": "Y",
+        "runStep": "1218",
+        "runMileage": "908",
+        "ts": "1791890292"
+      },
+      {
+        "point": "117.233972,31.848983",
+        "speed": 8.23,
+        "runStatus": 1,
+        "runTime": "604",
+        "isFence": "Y",
+        "runStep": "1218",
+        "runMileage": "912",
+        "ts": "1791890294"
+      },
+      {
+        "point": "117.234006,31.848994",
+        "speed": 7.59,
+        "runStatus": 1,
+        "runTime": "606",
+        "isFence": "Y",
+        "runStep": "1222",
+        "runMileage": "916",
+        "ts": "1791890296"
+      },
+      {
+        "point": "117.234044,31.849009",
+        "speed": 6.75,
+        "runStatus": 1,
+        "runTime": "609",
+        "isFence": "Y",
+        "runStep": "1226",
+        "runMileage": "919",
+        "ts": "1791890299"
+      },
+      {
+        "point": "117.234076,31.849026",
+        "speed": 7.06,
+        "runStatus": 1,
+        "runTime": "611",
+        "isFence": "Y",
+        "runStep": "1230",
+        "runMileage": "923",
+        "ts": "1791890301"
+      },
+      {
+        "point": "117.234107,31.849043",
+        "speed": 6.67,
+        "runStatus": 1,
+        "runTime": "613",
+        "isFence": "Y",
+        "runStep": "1232",
+        "runMileage": "927",
+        "ts": "1791890303"
+      },
+      {
+        "point": "117.234136,31.849062",
+        "speed": 6.32,
+        "runStatus": 1,
+        "runTime": "616",
+        "isFence": "Y",
+        "runStep": "1238",
+        "runMileage": "930",
+        "ts": "1791890306"
+      },
+      {
+        "point": "117.234161,31.849083",
+        "speed": 6.69,
+        "runStatus": 1,
+        "runTime": "618",
+        "isFence": "Y",
+        "runStep": "1244",
+        "runMileage": "935",
+        "ts": "1791890308"
+      },
+      {
+        "point": "117.234182,31.849106",
+        "speed": 6.43,
+        "runStatus": 1,
+        "runTime": "621",
+        "isFence": "Y",
+        "runStep": "1248",
+        "runMileage": "938",
+        "ts": "1791890311"
+      },
+      {
+        "point": "117.234200,31.849128",
+        "speed": 7.02,
+        "runStatus": 1,
+        "runTime": "623",
+        "isFence": "Y",
+        "runStep": "1252",
+        "runMileage": "941",
+        "ts": "1791890313"
+      },
+      {
+        "point": "117.234218,31.849150",
+        "speed": 7.01,
+        "runStatus": 1,
+        "runTime": "625",
+        "isFence": "Y",
+        "runStep": "1258",
+        "runMileage": "945",
+        "ts": "1791890315"
+      },
+      {
+        "point": "117.234236,31.849175",
+        "speed": 6.96,
+        "runStatus": 1,
+        "runTime": "628",
+        "isFence": "Y",
+        "runStep": "1264",
+        "runMileage": "948",
+        "ts": "1791890318"
+      },
+      {
+        "point": "117.234251,31.849202",
+        "speed": 7.07,
+        "runStatus": 1,
+        "runTime": "631",
+        "isFence": "Y",
+        "runStep": "1268",
+        "runMileage": "952",
+        "ts": "1791890321"
+      },
+      {
+        "point": "117.234264,31.849230",
+        "speed": 7.42,
+        "runStatus": 1,
+        "runTime": "634",
+        "isFence": "Y",
+        "runStep": "1274",
+        "runMileage": "956",
+        "ts": "1791890324"
+      },
+      {
+        "point": "117.234275,31.849257",
+        "speed": 7.71,
+        "runStatus": 1,
+        "runTime": "636",
+        "isFence": "Y",
+        "runStep": "1280",
+        "runMileage": "960",
+        "ts": "1791890326"
+      },
+      {
+        "point": "117.234283,31.849285",
+        "speed": 7.36,
+        "runStatus": 1,
+        "runTime": "639",
+        "isFence": "Y",
+        "runStep": "1284",
+        "runMileage": "964",
+        "ts": "1791890329"
+      },
+      {
+        "point": "117.234290,31.849313",
+        "speed": 7.71,
+        "runStatus": 1,
+        "runTime": "641",
+        "isFence": "Y",
+        "runStep": "1290",
+        "runMileage": "968",
+        "ts": "1791890331"
+      },
+      {
+        "point": "117.234294,31.849341",
+        "speed": 7.28,
+        "runStatus": 1,
+        "runTime": "643",
+        "isFence": "Y",
+        "runStep": "1296",
+        "runMileage": "971",
+        "ts": "1791890333"
+      },
+      {
+        "point": "117.234293,31.849369",
+        "speed": 7.33,
+        "runStatus": 1,
+        "runTime": "645",
+        "isFence": "Y",
+        "runStep": "1296",
+        "runMileage": "975",
+        "ts": "1791890335"
+      },
+      {
+        "point": "117.234292,31.849402",
+        "speed": 7.41,
+        "runStatus": 1,
+        "runTime": "648",
+        "isFence": "Y",
+        "runStep": "1300",
+        "runMileage": "979",
+        "ts": "1791890338"
+      },
+      {
+        "point": "117.234290,31.849435",
+        "speed": 7.31,
+        "runStatus": 1,
+        "runTime": "651",
+        "isFence": "Y",
+        "runStep": "1306",
+        "runMileage": "983",
+        "ts": "1791890341"
+      },
+      {
+        "point": "117.234286,31.849467",
+        "speed": 7.17,
+        "runStatus": 1,
+        "runTime": "654",
+        "isFence": "Y",
+        "runStep": "1310",
+        "runMileage": "987",
+        "ts": "1791890344"
+      },
+      {
+        "point": "117.234281,31.849497",
+        "speed": 7.06,
+        "runStatus": 1,
+        "runTime": "656",
+        "isFence": "Y",
+        "runStep": "1314",
+        "runMileage": "991",
+        "ts": "1791890346"
+      },
+      {
+        "point": "117.234274,31.849526",
+        "speed": 6.97,
+        "runStatus": 1,
+        "runTime": "658",
+        "isFence": "Y",
+        "runStep": "1318",
+        "runMileage": "994",
+        "ts": "1791890348"
+      },
+      {
+        "point": "117.234263,31.849555",
+        "speed": 6.71,
+        "runStatus": 1,
+        "runTime": "661",
+        "isFence": "Y",
+        "runStep": "1324",
+        "runMileage": "998",
+        "ts": "1791890351"
+      },
+      {
+        "point": "117.234253,31.849587",
+        "speed": 7.02,
+        "runStatus": 1,
+        "runTime": "664",
+        "isFence": "Y",
+        "runStep": "1330",
+        "runMileage": "1002",
+        "ts": "1791890354"
+      },
+      {
+        "point": "117.234244,31.849616",
+        "speed": 7.17,
+        "runStatus": 1,
+        "runTime": "666",
+        "isFence": "Y",
+        "runStep": "1334",
+        "runMileage": "1005",
+        "ts": "1791890356"
+      },
+      {
+        "point": "117.234234,31.849645",
+        "speed": 7.17,
+        "runStatus": 1,
+        "runTime": "669",
+        "isFence": "Y",
+        "runStep": "1340",
+        "runMileage": "1009",
+        "ts": "1791890359"
+      },
+      {
+        "point": "117.234223,31.849674",
+        "speed": 7.14,
+        "runStatus": 1,
+        "runTime": "671",
+        "isFence": "Y",
+        "runStep": "1344",
+        "runMileage": "1013",
+        "ts": "1791890361"
+      },
+      {
+        "point": "117.234214,31.849702",
+        "speed": 6.81,
+        "runStatus": 1,
+        "runTime": "673",
+        "isFence": "Y",
+        "runStep": "1344",
+        "runMileage": "1016",
+        "ts": "1791890363"
+      },
+      {
+        "point": "117.234204,31.849731",
+        "speed": 6.51,
+        "runStatus": 1,
+        "runTime": "675",
+        "isFence": "Y",
+        "runStep": "1350",
+        "runMileage": "1020",
+        "ts": "1791890365"
+      },
+      {
+        "point": "117.234192,31.849760",
+        "speed": 6.5,
+        "runStatus": 1,
+        "runTime": "677",
+        "isFence": "Y",
+        "runStep": "1356",
+        "runMileage": "1023",
+        "ts": "1791890367"
+      },
+      {
+        "point": "117.234177,31.849794",
+        "speed": 6.48,
+        "runStatus": 1,
+        "runTime": "681",
+        "isFence": "Y",
+        "runStep": "1360",
+        "runMileage": "1028",
+        "ts": "1791890371"
+      },
+      {
+        "point": "117.234161,31.849829",
+        "speed": 6.71,
+        "runStatus": 1,
+        "runTime": "684",
+        "isFence": "Y",
+        "runStep": "1365",
+        "runMileage": "1032",
+        "ts": "1791890374"
+      },
+      {
+        "point": "117.234145,31.849863",
+        "speed": 6.56,
+        "runStatus": 1,
+        "runTime": "687",
+        "isFence": "Y",
+        "runStep": "1369",
+        "runMileage": "1037",
+        "ts": "1791890377"
+      },
+      {
+        "point": "117.234130,31.849895",
+        "speed": 6.69,
+        "runStatus": 1,
+        "runTime": "689",
+        "isFence": "Y",
+        "runStep": "1373",
+        "runMileage": "1040",
+        "ts": "1791890379"
+      },
+      {
+        "point": "117.234115,31.849927",
+        "speed": 6.41,
+        "runStatus": 1,
+        "runTime": "692",
+        "isFence": "Y",
+        "runStep": "1377",
+        "runMileage": "1045",
+        "ts": "1791890382"
+      },
+      {
+        "point": "117.234101,31.849959",
+        "speed": 6.56,
+        "runStatus": 1,
+        "runTime": "694",
+        "isFence": "Y",
+        "runStep": "1383",
+        "runMileage": "1048",
+        "ts": "1791890384"
+      },
+      {
+        "point": "117.234088,31.849989",
+        "speed": 6.57,
+        "runStatus": 1,
+        "runTime": "696",
+        "isFence": "Y",
+        "runStep": "1383",
+        "runMileage": "1051",
+        "ts": "1791890386"
+      },
+      {
+        "point": "117.234075,31.850018",
+        "speed": 6.57,
+        "runStatus": 1,
+        "runTime": "698",
+        "isFence": "Y",
+        "runStep": "1389",
+        "runMileage": "1054",
+        "ts": "1791890388"
+      },
+      {
+        "point": "117.234063,31.850046",
+        "speed": 6.62,
+        "runStatus": 1,
+        "runTime": "700",
+        "isFence": "Y",
+        "runStep": "1393",
+        "runMileage": "1058",
+        "ts": "1791890390"
+      },
+      {
+        "point": "117.234048,31.850074",
+        "speed": 6.06,
+        "runStatus": 1,
+        "runTime": "702",
+        "isFence": "Y",
+        "runStep": "1399",
+        "runMileage": "1061",
+        "ts": "1791890392"
+      },
+      {
+        "point": "117.234032,31.850101",
+        "speed": 5.94,
+        "runStatus": 1,
+        "runTime": "705",
+        "isFence": "Y",
+        "runStep": "1403",
+        "runMileage": "1064",
+        "ts": "1791890395"
+      },
+      {
+        "point": "117.234015,31.850125",
+        "speed": 6.08,
+        "runStatus": 1,
+        "runTime": "707",
+        "isFence": "Y",
+        "runStep": "1409",
+        "runMileage": "1067",
+        "ts": "1791890397"
+      },
+      {
+        "point": "117.233997,31.850148",
+        "speed": 6.2,
+        "runStatus": 1,
+        "runTime": "709",
+        "isFence": "Y",
+        "runStep": "1412",
+        "runMileage": "1071",
+        "ts": "1791890399"
+      },
+      {
+        "point": "117.233973,31.850175",
+        "speed": 5.93,
+        "runStatus": 1,
+        "runTime": "713",
+        "isFence": "Y",
+        "runStep": "1418",
+        "runMileage": "1075",
+        "ts": "1791890403"
+      },
+      {
+        "point": "117.233948,31.850198",
+        "speed": 6.63,
+        "runStatus": 1,
+        "runTime": "715",
+        "isFence": "Y",
+        "runStep": "1422",
+        "runMileage": "1079",
+        "ts": "1791890405"
+      },
+      {
+        "point": "117.233922,31.850220",
+        "speed": 6.61,
+        "runStatus": 1,
+        "runTime": "718",
+        "isFence": "Y",
+        "runStep": "1428",
+        "runMileage": "1083",
+        "ts": "1791890408"
+      },
+      {
+        "point": "117.233894,31.850240",
+        "speed": 7.04,
+        "runStatus": 1,
+        "runTime": "721",
+        "isFence": "Y",
+        "runStep": "1432",
+        "runMileage": "1087",
+        "ts": "1791890411"
+      },
+      {
+        "point": "117.233866,31.850257",
+        "speed": 7.34,
+        "runStatus": 1,
+        "runTime": "723",
+        "isFence": "Y",
+        "runStep": "1436",
+        "runMileage": "1091",
+        "ts": "1791890413"
+      },
+      {
+        "point": "117.233835,31.850273",
+        "speed": 7.38,
+        "runStatus": 1,
+        "runTime": "726",
+        "isFence": "Y",
+        "runStep": "1442",
+        "runMileage": "1094",
+        "ts": "1791890416"
+      },
+      {
+        "point": "117.233802,31.850286",
+        "speed": 7.39,
+        "runStatus": 1,
+        "runTime": "729",
+        "isFence": "Y",
+        "runStep": "1446",
+        "runMileage": "1099",
+        "ts": "1791890419"
+      },
+      {
+        "point": "117.233769,31.850298",
+        "speed": 7.66,
+        "runStatus": 1,
+        "runTime": "731",
+        "isFence": "Y",
+        "runStep": "1450",
+        "runMileage": "1102",
+        "ts": "1791890421"
+      },
+      {
+        "point": "117.233734,31.850307",
+        "speed": 7.63,
+        "runStatus": 1,
+        "runTime": "734",
+        "isFence": "Y",
+        "runStep": "1454",
+        "runMileage": "1107",
+        "ts": "1791890424"
+      },
+      {
+        "point": "117.233700,31.850315",
+        "speed": 7.26,
+        "runStatus": 1,
+        "runTime": "736",
+        "isFence": "Y",
+        "runStep": "1460",
+        "runMileage": "1110",
+        "ts": "1791890426"
+      },
+      {
+        "point": "117.233665,31.850320",
+        "speed": 7.37,
+        "runStatus": 1,
+        "runTime": "739",
+        "isFence": "Y",
+        "runStep": "1466",
+        "runMileage": "1114",
+        "ts": "1791890429"
+      },
+      {
+        "point": "117.233626,31.850322",
+        "speed": 7.37,
+        "runStatus": 1,
+        "runTime": "742",
+        "isFence": "Y",
+        "runStep": "1476",
+        "runMileage": "1119",
+        "ts": "1791890432"
+      },
+      {
+        "point": "117.233582,31.850321",
+        "speed": 7.17,
+        "runStatus": 1,
+        "runTime": "746",
+        "isFence": "Y",
+        "runStep": "1480",
+        "runMileage": "1123",
+        "ts": "1791890436"
+      },
+      {
+        "point": "117.233541,31.850317",
+        "speed": 7.82,
+        "runStatus": 1,
+        "runTime": "749",
+        "isFence": "Y",
+        "runStep": "1486",
+        "runMileage": "1127",
+        "ts": "1791890439"
+      },
+      {
+        "point": "117.233505,31.850311",
+        "speed": 7.8,
+        "runStatus": 1,
+        "runTime": "752",
+        "isFence": "Y",
+        "runStep": "1491",
+        "runMileage": "1131",
+        "ts": "1791890442"
+      },
+      {
+        "point": "117.233473,31.850304",
+        "speed": 7.92,
+        "runStatus": 1,
+        "runTime": "754",
+        "isFence": "Y",
+        "runStep": "1496",
+        "runMileage": "1134",
+        "ts": "1791890444"
+      },
+      {
+        "point": "117.233440,31.850294",
+        "speed": 7.92,
+        "runStatus": 1,
+        "runTime": "757",
+        "isFence": "Y",
+        "runStep": "1502",
+        "runMileage": "1139",
+        "ts": "1791890447"
+      },
+      {
+        "point": "117.233408,31.850281",
+        "speed": 7.85,
+        "runStatus": 1,
+        "runTime": "759",
+        "isFence": "Y",
+        "runStep": "1506",
+        "runMileage": "1142",
+        "ts": "1791890449"
+      },
+      {
+        "point": "117.233378,31.850267",
+        "speed": 7.99,
+        "runStatus": 1,
+        "runTime": "761",
+        "isFence": "Y",
+        "runStep": "1512",
+        "runMileage": "1146",
+        "ts": "1791890451"
+      },
+      {
+        "point": "117.233348,31.850247",
+        "speed": 7.55,
+        "runStatus": 1,
+        "runTime": "763",
+        "isFence": "Y",
+        "runStep": "1518",
+        "runMileage": "1150",
+        "ts": "1791890453"
+      },
+      {
+        "point": "117.233319,31.850224",
+        "speed": 7.38,
+        "runStatus": 1,
+        "runTime": "766",
+        "isFence": "Y",
+        "runStep": "1524",
+        "runMileage": "1155",
+        "ts": "1791890456"
+      },
+      {
+        "point": "117.233295,31.850201",
+        "speed": 7.11,
+        "runStatus": 1,
+        "runTime": "768",
+        "isFence": "Y",
+        "runStep": "1528",
+        "runMileage": "1158",
+        "ts": "1791890458"
+      },
+      {
+        "point": "117.233275,31.850177",
+        "speed": 7.03,
+        "runStatus": 1,
+        "runTime": "770",
+        "isFence": "Y",
+        "runStep": "1532",
+        "runMileage": "1162",
+        "ts": "1791890460"
+      },
+      {
+        "point": "117.233258,31.850151",
+        "speed": 6.63,
+        "runStatus": 1,
+        "runTime": "772",
+        "isFence": "Y",
+        "runStep": "1532",
+        "runMileage": "1165",
+        "ts": "1791890462"
+      },
+      {
+        "point": "117.233246,31.850124",
+        "speed": 6.73,
+        "runStatus": 1,
+        "runTime": "774",
+        "isFence": "Y",
+        "runStep": "1538",
+        "runMileage": "1170",
+        "ts": "1791890464"
+      },
+      {
+        "point": "117.233237,31.850090",
+        "speed": 6.38,
+        "runStatus": 1,
+        "runTime": "777",
+        "isFence": "Y",
+        "runStep": "1542",
+        "runMileage": "1174",
+        "ts": "1791890467"
+      },
+      {
+        "point": "117.233231,31.850060",
+        "speed": 6.84,
+        "runStatus": 1,
+        "runTime": "779",
+        "isFence": "Y",
+        "runStep": "1546",
+        "runMileage": "1177",
+        "ts": "1791890469"
+      },
+      {
+        "point": "117.233229,31.850031",
+        "speed": 6.9,
+        "runStatus": 1,
+        "runTime": "782",
+        "isFence": "Y",
+        "runStep": "1550",
+        "runMileage": "1181",
+        "ts": "1791890472"
+      },
+      {
+        "point": "117.233229,31.850004",
+        "speed": 7.27,
+        "runStatus": 1,
+        "runTime": "784",
+        "isFence": "Y",
+        "runStep": "1554",
+        "runMileage": "1184",
+        "ts": "1791890474"
+      },
+      {
+        "point": "117.233232,31.849977",
+        "speed": 6.94,
+        "runStatus": 1,
+        "runTime": "786",
+        "isFence": "Y",
+        "runStep": "1560",
+        "runMileage": "1188",
+        "ts": "1791890476"
+      },
+      {
+        "point": "117.233237,31.849951",
+        "speed": 6.96,
+        "runStatus": 1,
+        "runTime": "788",
+        "isFence": "Y",
+        "runStep": "1566",
+        "runMileage": "1192",
+        "ts": "1791890478"
+      },
+      {
+        "point": "117.233244,31.849923",
+        "speed": 6.9,
+        "runStatus": 1,
+        "runTime": "790",
+        "isFence": "Y",
+        "runStep": "1566",
+        "runMileage": "1195",
+        "ts": "1791890480"
+      },
+      {
+        "point": "117.233251,31.849896",
+        "speed": 6.87,
+        "runStatus": 1,
+        "runTime": "792",
+        "isFence": "Y",
+        "runStep": "1572",
+        "runMileage": "1198",
+        "ts": "1791890482"
+      },
+      {
+        "point": "117.233260,31.849868",
+        "speed": 6.88,
+        "runStatus": 1,
+        "runTime": "795",
+        "isFence": "Y",
+        "runStep": "1577",
+        "runMileage": "1202",
+        "ts": "1791890485"
+      },
+      {
+        "point": "117.233269,31.849839",
+        "speed": 6.85,
+        "runStatus": 1,
+        "runTime": "798",
+        "isFence": "Y",
+        "runStep": "1588",
+        "runMileage": "1205",
+        "ts": "1791890488"
+      },
+      {
+        "point": "117.233277,31.849812",
+        "speed": 7.2,
+        "runStatus": 1,
+        "runTime": "800",
+        "isFence": "Y",
+        "runStep": "1588",
+        "runMileage": "1209",
+        "ts": "1791890490"
+      },
+      {
+        "point": "117.233285,31.849786",
+        "speed": 6.78,
+        "runStatus": 1,
+        "runTime": "802",
+        "isFence": "Y",
+        "runStep": "1592",
+        "runMileage": "1212",
+        "ts": "1791890492"
+      },
+      {
+        "point": "117.233295,31.849757",
+        "speed": 6.67,
+        "runStatus": 1,
+        "runTime": "804",
+        "isFence": "Y",
+        "runStep": "1598",
+        "runMileage": "1216",
+        "ts": "1791890494"
+      },
+      {
+        "point": "117.233304,31.849727",
+        "speed": 6.53,
+        "runStatus": 1,
+        "runTime": "806",
+        "isFence": "Y",
+        "runStep": "1604",
+        "runMileage": "1220",
+        "ts": "1791890496"
+      },
+      {
+        "point": "117.233314,31.849694",
+        "speed": 6.44,
+        "runStatus": 1,
+        "runTime": "809",
+        "isFence": "Y",
+        "runStep": "1610",
+        "runMileage": "1224",
+        "ts": "1791890499"
+      },
+      {
+        "point": "117.233324,31.849660",
+        "speed": 6.7,
+        "runStatus": 1,
+        "runTime": "812",
+        "isFence": "Y",
+        "runStep": "1614",
+        "runMileage": "1228",
+        "ts": "1791890502"
+      },
+      {
+        "point": "117.233335,31.849629",
+        "speed": 6.86,
+        "runStatus": 1,
+        "runTime": "814",
+        "isFence": "Y",
+        "runStep": "1620",
+        "runMileage": "1232",
+        "ts": "1791890504"
+      },
+      {
+        "point": "117.233345,31.849600",
+        "speed": 6.48,
+        "runStatus": 1,
+        "runTime": "816",
+        "isFence": "Y",
+        "runStep": "1626",
+        "runMileage": "1235",
+        "ts": "1791890506"
+      },
+      {
+        "point": "117.233356,31.849572",
+        "speed": 6.19,
+        "runStatus": 1,
+        "runTime": "818",
+        "isFence": "Y",
+        "runStep": "1626",
+        "runMileage": "1238",
+        "ts": "1791890508"
+      },
+      {
+        "point": "117.233367,31.849544",
+        "speed": 6.16,
+        "runStatus": 1,
+        "runTime": "820",
+        "isFence": "Y",
+        "runStep": "1630",
+        "runMileage": "1241",
+        "ts": "1791890510"
+      },
+      {
+        "point": "117.233378,31.849512",
+        "speed": 6.13,
+        "runStatus": 1,
+        "runTime": "823",
+        "isFence": "Y",
+        "runStep": "1633",
+        "runMileage": "1246",
+        "ts": "1791890513"
+      },
+      {
+        "point": "117.233391,31.849482",
+        "speed": 6.33,
+        "runStatus": 1,
+        "runTime": "825",
+        "isFence": "Y",
+        "runStep": "1639",
+        "runMileage": "1249",
+        "ts": "1791890515"
+      },
+      {
+        "point": "117.233404,31.849451",
+        "speed": 6.34,
+        "runStatus": 1,
+        "runTime": "828",
+        "isFence": "Y",
+        "runStep": "1644",
+        "runMileage": "1254",
+        "ts": "1791890518"
+      },
+      {
+        "point": "117.233416,31.849420",
+        "speed": 6.28,
+        "runStatus": 1,
+        "runTime": "830",
+        "isFence": "Y",
+        "runStep": "1650",
+        "runMileage": "1257",
+        "ts": "1791890520"
+      },
+      {
+        "point": "117.233429,31.849391",
+        "speed": 5.99,
+        "runStatus": 1,
+        "runTime": "832",
+        "isFence": "Y",
+        "runStep": "1655",
+        "runMileage": "1260",
+        "ts": "1791890522"
+      },
+      {
+        "point": "117.233442,31.849360",
+        "speed": 6.04,
+        "runStatus": 1,
+        "runTime": "835",
+        "isFence": "Y",
+        "runStep": "1661",
+        "runMileage": "1264",
+        "ts": "1791890525"
+      },
+      {
+        "point": "117.233451,31.849330",
+        "speed": 6.31,
+        "runStatus": 1,
+        "runTime": "837",
+        "isFence": "Y",
+        "runStep": "1666",
+        "runMileage": "1267",
+        "ts": "1791890527"
+      },
+      {
+        "point": "117.233459,31.849301",
+        "speed": 6.39,
+        "runStatus": 1,
+        "runTime": "839",
+        "isFence": "Y",
+        "runStep": "1670",
+        "runMileage": "1271",
+        "ts": "1791890529"
+      },
+      {
+        "point": "117.233469,31.849271",
+        "speed": 6.34,
+        "runStatus": 1,
+        "runTime": "841",
+        "isFence": "Y",
+        "runStep": "1670",
+        "runMileage": "1275",
+        "ts": "1791890531"
+      },
+      {
+        "point": "117.233480,31.849236",
+        "speed": 5.96,
+        "runStatus": 1,
+        "runTime": "844",
+        "isFence": "Y",
+        "runStep": "1680",
+        "runMileage": "1278",
+        "ts": "1791890534"
+      },
+      {
+        "point": "117.233493,31.849206",
+        "speed": 6.34,
+        "runStatus": 1,
+        "runTime": "846",
+        "isFence": "Y",
+        "runStep": "1680",
+        "runMileage": "1282",
+        "ts": "1791890536"
+      },
+      {
+        "point": "117.233506,31.849178",
+        "speed": 6.07,
+        "runStatus": 1,
+        "runTime": "848",
+        "isFence": "Y",
+        "runStep": "1686",
+        "runMileage": "1285",
+        "ts": "1791890538"
+      },
+      {
+        "point": "117.233525,31.849145",
+        "speed": 6.1,
+        "runStatus": 1,
+        "runTime": "852",
+        "isFence": "Y",
+        "runStep": "1694",
+        "runMileage": "1290",
+        "ts": "1791890542"
+      },
+      {
+        "point": "117.233547,31.849113",
+        "speed": 6.6,
+        "runStatus": 1,
+        "runTime": "855",
+        "isFence": "Y",
+        "runStep": "1700",
+        "runMileage": "1295",
+        "ts": "1791890545"
+      },
+      {
+        "point": "117.233570,31.849086",
+        "speed": 6.59,
+        "runStatus": 1,
+        "runTime": "857",
+        "isFence": "Y",
+        "runStep": "1704",
+        "runMileage": "1299",
+        "ts": "1791890547"
+      },
+      {
+        "point": "117.233593,31.849063",
+        "speed": 6.64,
+        "runStatus": 1,
+        "runTime": "859",
+        "isFence": "Y",
+        "runStep": "1704",
+        "runMileage": "1302",
+        "ts": "1791890549"
+      },
+      {
+        "point": "117.233616,31.849042",
+        "speed": 6.77,
+        "runStatus": 1,
+        "runTime": "861",
+        "isFence": "Y",
+        "runStep": "1711",
+        "runMileage": "1305",
+        "ts": "1791890551"
+      },
+      {
+        "point": "117.233642,31.849023",
+        "speed": 6.91,
+        "runStatus": 1,
+        "runTime": "863",
+        "isFence": "Y",
+        "runStep": "1716",
+        "runMileage": "1309",
+        "ts": "1791890553"
+      },
+      {
+        "point": "117.233667,31.849005",
+        "speed": 6.54,
+        "runStatus": 1,
+        "runTime": "864",
+        "isFence": "Y",
+        "runStep": "1716",
+        "runMileage": "1313",
+        "ts": "1791890554"
+      },
+      {
+        "point": "117.233695,31.848993",
+        "speed": 6.31,
+        "runStatus": 1,
+        "runTime": "865",
+        "isFence": "Y",
+        "runStep": "1716",
+        "runMileage": "1317",
+        "ts": "1791890555"
+      },
+      {
+        "point": "117.233735,31.848979",
+        "speed": 6.12,
+        "runStatus": 1,
+        "runTime": "866",
+        "isFence": "Y",
+        "runStep": "1716",
+        "runMileage": "1322",
+        "ts": "1791890556"
+      },
+      {
+        "point": "117.233788,31.848967",
+        "speed": 5.04,
+        "runStatus": 1,
+        "runTime": "867",
+        "isFence": "Y",
+        "runStep": "1716",
+        "runMileage": "1327",
+        "ts": "1791890557"
+      },
+      {
+        "point": "117.233848,31.848958",
+        "speed": 4.28,
+        "runStatus": 1,
+        "runTime": "868",
+        "isFence": "Y",
+        "runStep": "1716",
+        "runMileage": "1332",
+        "ts": "1791890558"
+      },
+      {
+        "point": "117.233903,31.848958",
+        "speed": 3.92,
+        "runStatus": 1,
+        "runTime": "869",
+        "isFence": "Y",
+        "runStep": "1716",
+        "runMileage": "1337",
+        "ts": "1791890559"
+      },
+      {
+        "point": "117.233956,31.848962",
+        "speed": 3.53,
+        "runStatus": 1,
+        "runTime": "870",
+        "isFence": "Y",
+        "runStep": "1723",
+        "runMileage": "1341",
+        "ts": "1791890560"
+      },
+      {
+        "point": "117.234004,31.848969",
+        "speed": 3.16,
+        "runStatus": 1,
+        "runTime": "871",
+        "isFence": "Y",
+        "runStep": "1723",
+        "runMileage": "1345",
+        "ts": "1791890561"
+      },
+      {
+        "point": "117.234050,31.848978",
+        "speed": 2.73,
+        "runStatus": 1,
+        "runTime": "872",
+        "isFence": "Y",
+        "runStep": "1723",
+        "runMileage": "1349",
+        "ts": "1791890562"
+      },
+      {
+        "point": "117.234091,31.848986",
+        "speed": 2.69,
+        "runStatus": 1,
+        "runTime": "873",
+        "isFence": "Y",
+        "runStep": "1723",
+        "runMileage": "1352",
+        "ts": "1791890563"
+      },
+      {
+        "point": "117.234128,31.848996",
+        "speed": 2.65,
+        "runStatus": 1,
+        "runTime": "874",
+        "isFence": "Y",
+        "runStep": "1723",
+        "runMileage": "1356",
+        "ts": "1791890564"
+      },
+      {
+        "point": "117.234169,31.849012",
+        "speed": 2.66,
+        "runStatus": 1,
+        "runTime": "875",
+        "isFence": "Y",
+        "runStep": "1729",
+        "runMileage": "1363",
+        "ts": "1791890565"
+      },
+      {
+        "point": "117.234212,31.849037",
+        "speed": 2.6,
+        "runStatus": 1,
+        "runTime": "876",
+        "isFence": "Y",
+        "runStep": "1729",
+        "runMileage": "1367",
+        "ts": "1791890566"
+      },
+      {
+        "point": "117.234243,31.849065",
+        "speed": 2.79,
+        "runStatus": 1,
+        "runTime": "877",
+        "isFence": "Y",
+        "runStep": "1729",
+        "runMileage": "1372",
+        "ts": "1791890567"
+      },
+      {
+        "point": "117.234278,31.849105",
+        "speed": 2.92,
+        "runStatus": 1,
+        "runTime": "879",
+        "isFence": "Y",
+        "runStep": "1729",
+        "runMileage": "1378",
+        "ts": "1791890569"
+      },
+      {
+        "point": "117.234304,31.849138",
+        "speed": 3.21,
+        "runStatus": 1,
+        "runTime": "880",
+        "isFence": "Y",
+        "runStep": "1737",
+        "runMileage": "1381",
+        "ts": "1791890570"
+      },
+      {
+        "point": "117.234318,31.849169",
+        "speed": 3.33,
+        "runStatus": 1,
+        "runTime": "881",
+        "isFence": "Y",
+        "runStep": "1737",
+        "runMileage": "1387",
+        "ts": "1791890571"
+      },
+      {
+        "point": "117.234332,31.849208",
+        "speed": 3.36,
+        "runStatus": 1,
+        "runTime": "882",
+        "isFence": "Y",
+        "runStep": "1737",
+        "runMileage": "1392",
+        "ts": "1791890572"
+      },
+      {
+        "point": "117.234338,31.849254",
+        "speed": 3.25,
+        "runStatus": 1,
+        "runTime": "883",
+        "isFence": "Y",
+        "runStep": "1745",
+        "runMileage": "1399",
+        "ts": "1791890573"
+      },
+      {
+        "point": "117.234339,31.849307",
+        "speed": 3.12,
+        "runStatus": 2,
+        "runTime": "884",
+        "isFence": "Y",
+        "runStep": "1745",
+        "runMileage": "1404",
+        "ts": "1791890574"
+      },
+      {
+        "point": "117.234289,31.849497",
+        "speed": 0,
+        "runStatus": 2,
+        "runTime": "884",
+        "isFence": "Y",
+        "runStep": "1745",
+        "runMileage": "1404",
+        "ts": "1791890579"
+      },
+      {
+        "point": "117.234274,31.849536",
+        "speed": 0,
+        "runStatus": 1,
+        "runTime": "886",
+        "isFence": "Y",
+        "runStep": "1745",
+        "runMileage": "1408",
+        "ts": "1791890585"
+      },
+      {
+        "point": "117.234264,31.849564",
+        "speed": 6.74,
+        "runStatus": 1,
+        "runTime": "888",
+        "isFence": "Y",
+        "runStep": "1745",
+        "runMileage": "1411",
+        "ts": "1791890587"
+      },
+      {
+        "point": "117.234256,31.849589",
+        "speed": 7.33,
+        "runStatus": 1,
+        "runTime": "891",
+        "isFence": "Y",
+        "runStep": "1753",
+        "runMileage": "1416",
+        "ts": "1791890590"
+      },
+      {
+        "point": "117.234248,31.849613",
+        "speed": 8.23,
+        "runStatus": 1,
+        "runTime": "893",
+        "isFence": "Y",
+        "runStep": "1753",
+        "runMileage": "1419",
+        "ts": "1791890592"
+      },
+      {
+        "point": "117.234242,31.849635",
+        "speed": 8.45,
+        "runStatus": 1,
+        "runTime": "895",
+        "isFence": "Y",
+        "runStep": "1753",
+        "runMileage": "1422",
+        "ts": "1791890594"
+      },
+      {
+        "point": "117.234233,31.849658",
+        "speed": 8.68,
+        "runStatus": 1,
+        "runTime": "898",
+        "isFence": "Y",
+        "runStep": "1759",
+        "runMileage": "1426",
+        "ts": "1791890597"
+      },
+      {
+        "point": "117.234224,31.849685",
+        "speed": 9.08,
+        "runStatus": 1,
+        "runTime": "901",
+        "isFence": "Y",
+        "runStep": "1764",
+        "runMileage": "1431",
+        "ts": "1791890600"
+      },
+      {
+        "point": "117.234214,31.849712",
+        "speed": 9.33,
+        "runStatus": 1,
+        "runTime": "904",
+        "isFence": "Y",
+        "runStep": "1773",
+        "runMileage": "1435",
+        "ts": "1791890603"
+      },
+      {
+        "point": "117.234204,31.849738",
+        "speed": 9.67,
+        "runStatus": 1,
+        "runTime": "907",
+        "isFence": "Y",
+        "runStep": "1778",
+        "runMileage": "1439",
+        "ts": "1791890606"
+      },
+      {
+        "point": "117.234194,31.849766",
+        "speed": 8.53,
+        "runStatus": 1,
+        "runTime": "910",
+        "isFence": "Y",
+        "runStep": "1783",
+        "runMileage": "1443",
+        "ts": "1791890609"
+      },
+      {
+        "point": "117.234185,31.849795",
+        "speed": 8.74,
+        "runStatus": 1,
+        "runTime": "913",
+        "isFence": "Y",
+        "runStep": "1788",
+        "runMileage": "1447",
+        "ts": "1791890612"
+      },
+      {
+        "point": "117.234173,31.849824",
+        "speed": 8.51,
+        "runStatus": 1,
+        "runTime": "916",
+        "isFence": "Y",
+        "runStep": "1793",
+        "runMileage": "1452",
+        "ts": "1791890615"
+      },
+      {
+        "point": "117.234160,31.849855",
+        "speed": 8.53,
+        "runStatus": 1,
+        "runTime": "919",
+        "isFence": "Y",
+        "runStep": "1803",
+        "runMileage": "1456",
+        "ts": "1791890618"
+      },
+      {
+        "point": "117.234146,31.849886",
+        "speed": 8.56,
+        "runStatus": 1,
+        "runTime": "922",
+        "isFence": "Y",
+        "runStep": "1809",
+        "runMileage": "1461",
+        "ts": "1791890621"
+      },
+      {
+        "point": "117.234132,31.849918",
+        "speed": 8.28,
+        "runStatus": 1,
+        "runTime": "925",
+        "isFence": "Y",
+        "runStep": "1814",
+        "runMileage": "1465",
+        "ts": "1791890624"
+      },
+      {
+        "point": "117.234118,31.849950",
+        "speed": 8.1,
+        "runStatus": 1,
+        "runTime": "928",
+        "isFence": "Y",
+        "runStep": "1819",
+        "runMileage": "1469",
+        "ts": "1791890627"
+      },
+      {
+        "point": "117.234106,31.849980",
+        "speed": 7.92,
+        "runStatus": 1,
+        "runTime": "930",
+        "isFence": "Y",
+        "runStep": "1824",
+        "runMileage": "1472",
+        "ts": "1791890629"
+      },
+      {
+        "point": "117.234093,31.850010",
+        "speed": 7.6,
+        "runStatus": 1,
+        "runTime": "933",
+        "isFence": "Y",
+        "runStep": "1830",
+        "runMileage": "1476",
+        "ts": "1791890632"
+      },
+      {
+        "point": "117.234078,31.850041",
+        "speed": 7.47,
+        "runStatus": 1,
+        "runTime": "936",
+        "isFence": "Y",
+        "runStep": "1835",
+        "runMileage": "1480",
+        "ts": "1791890635"
+      },
+      {
+        "point": "117.234062,31.850073",
+        "speed": 7.36,
+        "runStatus": 1,
+        "runTime": "939",
+        "isFence": "Y",
+        "runStep": "1840",
+        "runMileage": "1485",
+        "ts": "1791890638"
+      },
+      {
+        "point": "117.234045,31.850104",
+        "speed": 7.27,
+        "runStatus": 1,
+        "runTime": "942",
+        "isFence": "Y",
+        "runStep": "1850",
+        "runMileage": "1489",
+        "ts": "1791890641"
+      },
+      {
+        "point": "117.234026,31.850135",
+        "speed": 7.19,
+        "runStatus": 1,
+        "runTime": "945",
+        "isFence": "Y",
+        "runStep": "1856",
+        "runMileage": "1493",
+        "ts": "1791890644"
+      },
+      {
+        "point": "117.234007,31.850164",
+        "speed": 7.23,
+        "runStatus": 1,
+        "runTime": "948",
+        "isFence": "Y",
+        "runStep": "1861",
+        "runMileage": "1497",
+        "ts": "1791890647"
+      },
+      {
+        "point": "117.233986,31.850192",
+        "speed": 7.21,
+        "runStatus": 1,
+        "runTime": "951",
+        "isFence": "Y",
+        "runStep": "1866",
+        "runMileage": "1500",
+        "ts": "1791890650"
+      },
+      {
+        "point": "117.233963,31.850218",
+        "speed": 7.29,
+        "runStatus": 1,
+        "runTime": "954",
+        "isFence": "Y",
+        "runStep": "1871",
+        "runMileage": "1504",
+        "ts": "1791890653"
+      },
+      {
+        "point": "117.233939,31.850243",
+        "speed": 7.56,
+        "runStatus": 1,
+        "runTime": "957",
+        "isFence": "Y",
+        "runStep": "1876",
+        "runMileage": "1508",
+        "ts": "1791890656"
+      },
+      {
+        "point": "117.233913,31.850267",
+        "speed": 7.54,
+        "runStatus": 1,
+        "runTime": "960",
+        "isFence": "Y",
+        "runStep": "1886",
+        "runMileage": "1512",
+        "ts": "1791890659"
+      },
+      {
+        "point": "117.233887,31.850289",
+        "speed": 7.63,
+        "runStatus": 1,
+        "runTime": "963",
+        "isFence": "Y",
+        "runStep": "1891",
+        "runMileage": "1516",
+        "ts": "1791890662"
+      },
+      {
+        "point": "117.233858,31.850309",
+        "speed": 7.67,
+        "runStatus": 1,
+        "runTime": "966",
+        "isFence": "Y",
+        "runStep": "1896",
+        "runMileage": "1520",
+        "ts": "1791890665"
+      },
+      {
+        "point": "117.233828,31.850327",
+        "speed": 7.73,
+        "runStatus": 1,
+        "runTime": "969",
+        "isFence": "Y",
+        "runStep": "1901",
+        "runMileage": "1524",
+        "ts": "1791890668"
+      },
+      {
+        "point": "117.233796,31.850343",
+        "speed": 7.84,
+        "runStatus": 1,
+        "runTime": "972",
+        "isFence": "Y",
+        "runStep": "1906",
+        "runMileage": "1528",
+        "ts": "1791890671"
+      },
+      {
+        "point": "117.233761,31.850357",
+        "speed": 7.85,
+        "runStatus": 1,
+        "runTime": "975",
+        "isFence": "Y",
+        "runStep": "1916",
+        "runMileage": "1532",
+        "ts": "1791890674"
+      },
+      {
+        "point": "117.233725,31.850369",
+        "speed": 7.88,
+        "runStatus": 1,
+        "runTime": "978",
+        "isFence": "Y",
+        "runStep": "1921",
+        "runMileage": "1536",
+        "ts": "1791890677"
+      },
+      {
+        "point": "117.233690,31.850377",
+        "speed": 7.9,
+        "runStatus": 1,
+        "runTime": "981",
+        "isFence": "Y",
+        "runStep": "1926",
+        "runMileage": "1539",
+        "ts": "1791890680"
+      },
+      {
+        "point": "117.233656,31.850383",
+        "speed": 8.09,
+        "runStatus": 1,
+        "runTime": "984",
+        "isFence": "Y",
+        "runStep": "1931",
+        "runMileage": "1544",
+        "ts": "1791890683"
+      },
+      {
+        "point": "117.233619,31.850387",
+        "speed": 8.05,
+        "runStatus": 1,
+        "runTime": "987",
+        "isFence": "Y",
+        "runStep": "1936",
+        "runMileage": "1548",
+        "ts": "1791890686"
+      },
+      {
+        "point": "117.233582,31.850389",
+        "speed": 8.02,
+        "runStatus": 1,
+        "runTime": "990",
+        "isFence": "Y",
+        "runStep": "1942",
+        "runMileage": "1552",
+        "ts": "1791890689"
+      },
+      {
+        "point": "117.233544,31.850386",
+        "speed": 8.03,
+        "runStatus": 1,
+        "runTime": "993",
+        "isFence": "Y",
+        "runStep": "1952",
+        "runMileage": "1557",
+        "ts": "1791890692"
+      },
+      {
+        "point": "117.233504,31.850379",
+        "speed": 8.01,
+        "runStatus": 1,
+        "runTime": "996",
+        "isFence": "Y",
+        "runStep": "1957",
+        "runMileage": "1561",
+        "ts": "1791890695"
+      },
+      {
+        "point": "117.233468,31.850372",
+        "speed": 8,
+        "runStatus": 1,
+        "runTime": "998",
+        "isFence": "Y",
+        "runStep": "1962",
+        "runMileage": "1564",
+        "ts": "1791890697"
+      },
+      {
+        "point": "117.233433,31.850361",
+        "speed": 7.79,
+        "runStatus": 1,
+        "runTime": "1001",
+        "isFence": "Y",
+        "runStep": "1966",
+        "runMileage": "1569",
+        "ts": "1791890700"
+      },
+      {
+        "point": "117.233400,31.850350",
+        "speed": 7.76,
+        "runStatus": 1,
+        "runTime": "1003",
+        "isFence": "Y",
+        "runStep": "1966",
+        "runMileage": "1572",
+        "ts": "1791890702"
+      },
+      {
+        "point": "117.233369,31.850336",
+        "speed": 7.55,
+        "runStatus": 1,
+        "runTime": "1006",
+        "isFence": "Y",
+        "runStep": "1977",
+        "runMileage": "1575",
+        "ts": "1791890705"
+      },
+      {
+        "point": "117.233341,31.850321",
+        "speed": 7.54,
+        "runStatus": 1,
+        "runTime": "1008",
+        "isFence": "Y",
+        "runStep": "1977",
+        "runMileage": "1578",
+        "ts": "1791890707"
+      },
+      {
+        "point": "117.233314,31.850303",
+        "speed": 7.34,
+        "runStatus": 1,
+        "runTime": "1011",
+        "isFence": "Y",
+        "runStep": "1987",
+        "runMileage": "1583",
+        "ts": "1791890710"
+      },
+      {
+        "point": "117.233286,31.850281",
+        "speed": 7.3,
+        "runStatus": 1,
+        "runTime": "1014",
+        "isFence": "Y",
+        "runStep": "1993",
+        "runMileage": "1587",
+        "ts": "1791890713"
+      },
+      {
+        "point": "117.233262,31.850259",
+        "speed": 7.27,
+        "runStatus": 1,
+        "runTime": "1016",
+        "isFence": "Y",
+        "runStep": "1998",
+        "runMileage": "1590",
+        "ts": "1791890715"
+      },
+      {
+        "point": "117.233240,31.850235",
+        "speed": 7.13,
+        "runStatus": 1,
+        "runTime": "1019",
+        "isFence": "Y",
+        "runStep": "2003",
+        "runMileage": "1595",
+        "ts": "1791890718"
+      },
+      {
+        "point": "117.233219,31.850208",
+        "speed": 7.39,
+        "runStatus": 1,
+        "runTime": "1022",
+        "isFence": "Y",
+        "runStep": "2008",
+        "runMileage": "1599",
+        "ts": "1791890721"
+      },
+      {
+        "point": "117.233202,31.850180",
+        "speed": 7.39,
+        "runStatus": 1,
+        "runTime": "1025",
+        "isFence": "Y",
+        "runStep": "2013",
+        "runMileage": "1603",
+        "ts": "1791890724"
+      },
+      {
+        "point": "117.233188,31.850151",
+        "speed": 7.75,
+        "runStatus": 1,
+        "runTime": "1028",
+        "isFence": "Y",
+        "runStep": "2019",
+        "runMileage": "1607",
+        "ts": "1791890727"
+      },
+      {
+        "point": "117.233176,31.850121",
+        "speed": 7.7,
+        "runStatus": 1,
+        "runTime": "1031",
+        "isFence": "Y",
+        "runStep": "2024",
+        "runMileage": "1611",
+        "ts": "1791890730"
+      },
+      {
+        "point": "117.233168,31.850091",
+        "speed": 8.01,
+        "runStatus": 1,
+        "runTime": "1034",
+        "isFence": "Y",
+        "runStep": "2034",
+        "runMileage": "1615",
+        "ts": "1791890733"
+      },
+      {
+        "point": "117.233164,31.850060",
+        "speed": 7.91,
+        "runStatus": 1,
+        "runTime": "1037",
+        "isFence": "Y",
+        "runStep": "2039",
+        "runMileage": "1619",
+        "ts": "1791890736"
+      },
+      {
+        "point": "117.233163,31.850032",
+        "speed": 8.04,
+        "runStatus": 1,
+        "runTime": "1039",
+        "isFence": "Y",
+        "runStep": "2043",
+        "runMileage": "1622",
+        "ts": "1791890738"
+      },
+      {
+        "point": "117.233188,31.849819",
+        "speed": 8.19,
+        "runStatus": 2,
+        "runTime": "1042",
+        "isFence": "Y",
+        "runStep": "2047",
+        "runMileage": "1627",
+        "ts": "1791890741"
+      }
+    ],
+    "schoolId": 195,
+    "manageList": [
+      {
+        "point": "117.233761,31.848972",
+        "marked": "Y",
+        "index": 0
+      },
+      {
+        "point": "117.233682,31.850346",
+        "marked": "Y",
+        "index": 1
+      },
+      {
+        "point": "117.233226,31.850057",
+        "marked": "Y",
+        "index": 2
+      },
+      {
+        "point": "117.234341,31.849234",
+        "marked": "Y",
+        "index": 3
+      },
+      {
+        "point": "117.234079,31.850007",
+        "marked": "Y",
+        "index": 4
+      }
+    ],
+    "className": "2025级计算机网络技术1、2班",
+    "studentName": "邢天赐",
+    "sex": "1",
+    "pointsArrayList": [],
+    "rdNum": 0
+  }
+}
