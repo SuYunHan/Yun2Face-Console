@@ -52,7 +52,7 @@ if os.name == "nt" and os.path.isdir(_LIB) and _LIB not in sys.path:
 import core  # noqa: E402
 import face_check  # noqa: E402
 import task_tools  # noqa: E402
-import web as route_web  # noqa: E402
+import web_shared as route_web  # noqa: E402
 from PIL import Image  # noqa: E402
 
 WEB_DIR = os.path.join(HERE, "web")
@@ -169,6 +169,8 @@ def _reader(run_id: str, stream) -> None:
             for piece in text.split("\r"):
                 if piece.strip():
                     run["lines"].append(_mask_line(piece))
+            if len(run["lines"]) > RUN_LINE_CAP * 2:
+                run["lines"] = run["lines"][-RUN_LINE_CAP:]
         if len(run["lines"]) > RUN_LINE_CAP:
             run["lines"] = run["lines"][-RUN_LINE_CAP:]
         _persist_run(run)
@@ -293,8 +295,8 @@ def _prepare_task_dir(proj: str, folder: str, want: str, run_id: str):
     """解析传给 -t 的任务表目录，返回 (task_dir, note, pick_dir)。
 
     main.py 在 -a 下会对 `-t` 目录里的 json 做 random.choice。因此**指定单表时
-    不能直接把整个 tasks_* 目录传进去**，否则实际跑的可能是别的表。做法与旧
-    面板 web.py 一致：把选中的表复制到一个只含它的临时目录，再把 -t 指向那里。
+    不能直接把整个 tasks_* 目录传进去**，否则实际跑的可能是别的表。做法：
+    把选中的表复制到一个只含它的临时目录，再把 -t 指向那里。
     """
     if not folder:
         return "", "", None
@@ -1582,6 +1584,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": True, "student": student,
                                "path": _control_config_path(student),
                                "config": control_config(student)})
+        if path == "/api/map-config":
+            return self._json({"ok": True, "config": route_web.get_map_config(BASE_DIR)})
         if path == "/api/route-meta":
             return self._json({"ok": True, **route_meta()})
         if path == "/api/routes":
@@ -1674,6 +1678,14 @@ class Handler(BaseHTTPRequestHandler):
                 save_control_config(body.get("config") or {}, student)
                 return self._json({"ok": True, "student": student,
                                    "path": _control_config_path(student)})
+            except Exception as exc:  # noqa: BLE001
+                return self._err(str(exc))
+
+        if path == "/api/map-config":
+            try:
+                payload = body.get("config") if isinstance(body.get("config"), dict) else body
+                cfg = route_web.save_map_config(payload or {}, BASE_DIR)
+                return self._json({"ok": True, "config": cfg})
             except Exception as exc:  # noqa: BLE001
                 return self._err(str(exc))
 

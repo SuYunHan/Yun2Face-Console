@@ -49,8 +49,87 @@ async function api(path, body) {
   return j;
 }
 
+/* ---------------------------------------------------------------- 浅色 / 深色主题管理 */
+function getResolvedTheme() {
+  const meta = document.querySelector('meta[name="color-scheme"]');
+  const stored = localStorage.getItem('color-scheme');
+  if (stored === 'light' || stored === 'dark') return stored;
+  if (meta && (meta.content === 'light' || meta.content === 'dark')) return meta.content;
+  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return isDark ? 'dark' : 'light';
+}
+
+function updateThemeUI() {
+  const resolved = getResolvedTheme();
+  const textEl = $('themeText');
+  if (textEl) {
+    // 提示切换至另一模式
+    textEl.textContent = resolved === 'dark' ? '浅色模式' : '深色模式';
+  }
+  const btn = $('themeToggle');
+  if (btn) {
+    const tip = resolved === 'dark' ? '切换至浅色模式' : '切换至深色模式';
+    btn.setAttribute('title', tip);
+    btn.setAttribute('aria-label', tip);
+  }
+}
+
+function toggleTheme() {
+  const isDarkOS = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const current = getResolvedTheme();
+  const target = current === 'dark' ? 'light' : 'dark';
+  const systemScheme = isDarkOS ? 'dark' : 'light';
+  const meta = document.querySelector('meta[name="color-scheme"]');
+
+  if (target === systemScheme) {
+    // 恢复跟随系统偏好，避免不可见地钉住主题
+    localStorage.removeItem('color-scheme');
+    if (meta) meta.content = 'light dark';
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    // 显式锁定用户偏好
+    localStorage.setItem('color-scheme', target);
+    if (meta) meta.content = target;
+    document.documentElement.setAttribute('data-theme', target);
+  }
+  updateThemeUI();
+}
+
+function initTheme() {
+  try {
+    const saved = localStorage.getItem('color-scheme');
+    const meta = document.querySelector('meta[name="color-scheme"]');
+    if (saved === 'light' || saved === 'dark') {
+      if (meta) meta.content = saved;
+      document.documentElement.setAttribute('data-theme', saved);
+    }
+  } catch (e) {}
+
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      updateThemeUI();
+    });
+  }
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'color-scheme') {
+      const meta = document.querySelector('meta[name="color-scheme"]');
+      if (e.newValue === 'light' || e.newValue === 'dark') {
+        if (meta) meta.content = e.newValue;
+        document.documentElement.setAttribute('data-theme', e.newValue);
+      } else {
+        if (meta) meta.content = 'light dark';
+        document.documentElement.removeAttribute('data-theme');
+      }
+      updateThemeUI();
+    }
+  });
+  updateThemeUI();
+}
+
 /* ---------------------------------------------------------------- 初始化 */
 async function boot() {
+  initTheme();
+  loadMapConfig();
   try {
     S.cfg = await api('/api/config');
     $('paths').textContent = `照片：${S.cfg.photos}　|　标注：${S.cfg.annos}`;
@@ -87,9 +166,11 @@ async function boot() {
 async function loadStudents() {
   const j = await api('/api/students');
   S.students = j.students;
+  const countEl = $('stuCount');
+  if (countEl) countEl.textContent = S.students.length;
   const box = $('stus');
   box.innerHTML = '';
-  if (!S.students.length) box.innerHTML = '<div class="hint" style="padding:6px">还没有任何学号目录</div>';
+  if (!S.students.length) box.innerHTML = '<div class="hint" style="padding:10px;text-align:center">还没有任何学号目录</div>';
   for (const s of S.students) {
     const div = document.createElement('div');
     div.className = 'stu' + (s.student === S.student ? ' active' : '');
@@ -97,6 +178,15 @@ async function loadStudents() {
     div.onclick = () => selectStudent(s.student);
     box.appendChild(div);
   }
+}
+
+function filterStudents(keyword) {
+  const kw = (keyword || '').trim().toLowerCase();
+  const items = document.querySelectorAll('#stus .stu');
+  items.forEach(el => {
+    const text = el.querySelector('span')?.textContent.toLowerCase() || '';
+    el.style.display = text.includes(kw) ? 'flex' : 'none';
+  });
 }
 
 async function selectStudent(name) {
@@ -568,7 +658,7 @@ const T = { tasks: [], cur: null, split: 10 };
 
 function switchTab(which) {
   for (const [k, id] of [['face', 'pane-face'], ['stats', 'pane-stats'], ['history', 'pane-history'], ['task', 'pane-task'], ['run', 'pane-run'], ['schedule', 'pane-schedule'],
-                           ['route', 'pane-route'], ['config', 'pane-config']]) {
+                           ['route', 'pane-route'], ['mapcfg', 'pane-mapcfg'], ['config', 'pane-config']]) {
     $(id).hidden = (k !== which);
     $('tab-' + k).classList.toggle('active', k === which);
   }
@@ -578,6 +668,7 @@ function switchTab(which) {
   if (which === 'run') { loadRunOptions(); loadRuns(); }
   if (which === 'schedule') loadSchedules();
   if (which === 'route') { loadRouteMeta(); }
+  if (which === 'mapcfg') { loadMapConfig(); }
   if (which === 'config') { loadControlConfig(); }
 }
 
@@ -1370,16 +1461,109 @@ async function uploadTasks(input) {
   await loadTasks();
 }
 
-/* ================================================================ 当前项目路线预览 / 配置 */
+/* ================================================================ 地图配置与多提供商支持 */
+const MAP_LAYERS = {
+  amap: [
+    { value: 'normal', name: '标准矢量街道图 (默认)', desc: '高德官方标准矢量街道底图' },
+    { value: 'satellite', name: '卫星遥感影像图', desc: '纯高精卫星航拍遥感影像' },
+    { value: 'hybrid', name: '卫星混合图 (含路网标注)', desc: '卫星遥感影像叠加路网与地名注记' },
+    { value: 'dark', name: '极客夜间暗色地图', desc: '深色炫酷主题，夜间视觉效果极佳' }
+  ],
+  baidu: [
+    { value: 'normal', name: '标准矢量街道图 (默认)', desc: '百度标准 2D 街道地图' },
+    { value: 'satellite', name: '卫星遥感影像图', desc: '纯卫星遥感航拍影像' },
+    { value: 'hybrid', name: '卫星混合图 (含路网标注)', desc: '卫星航拍底图叠加路网注记' }
+  ],
+  tencent: [
+    { value: 'normal', name: '标准矢量街道图 (默认)', desc: '腾讯 WebGL 经典街道矢量底图' },
+    { value: 'satellite', name: '卫星航拍遥感图', desc: '腾讯卫星遥感影像底图' },
+    { value: 'dark', name: '极夜墨渊暗色地图', desc: '官方 Style1 深色夜间个性化底图' }
+  ],
+  osm: [
+    { value: 'normal', name: 'OpenStreetMap 官方标准街道图', desc: '全球开源社区开放标准街道矢量瓦片' },
+    { value: 'satellite', name: 'Esri World Imagery 卫星影像', desc: 'Esri ArcGIS 全球高分辨率卫星影像' },
+    { value: 'carto_light', name: 'CartoDB Positron 极简浅色底图', desc: '极简清新灰白色调底图' },
+    { value: 'carto_dark', name: 'CartoDB Dark Matter 极客深色底图', desc: '暗色高对比度现代底图' },
+    { value: 'topo', name: 'OpenTopoMap 等高线地形图', desc: '包含地貌渲染与等高线的地形底图' }
+  ]
+};
+
+const MAP_SYSTEM = {
+  config: {
+    provider: 'amap',
+    map_type: 'normal',
+    amap_key: '',
+    amap_security_code: '',
+    baidu_ak: '',
+    tencent_key: '',
+    osm_tile_url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    fallback_canvas: true
+  },
+  loaders: {
+    amap: null,
+    baidu: null,
+    tencent: null,
+    leaflet: null
+  },
+  instances: {
+    route: null,
+    history: null,
+    test: null
+  },
+  currentProvider: {
+    route: null,
+    history: null,
+    test: null
+  }
+};
+
+function updateMapTypeOptions(provider, preferredType) {
+  const sel = $('cfg_map_type');
+  if (!sel) return;
+  const layers = MAP_LAYERS[provider] || MAP_LAYERS.amap;
+  sel.innerHTML = layers.map(l => `<option value="${l.value}">${l.name}</option>`).join('');
+  const matched = layers.some(l => l.value === preferredType);
+  const targetVal = matched ? preferredType : layers[0].value;
+  sel.value = targetVal;
+  MAP_SYSTEM.config.map_type = targetVal;
+  updateMapTypeDesc(provider, targetVal);
+}
+
+function updateMapTypeDesc(provider, typeVal) {
+  const descEl = $('mapTypeDesc');
+  if (!descEl) return;
+  const layers = MAP_LAYERS[provider] || MAP_LAYERS.amap;
+  const cur = layers.find(l => l.value === typeVal) || layers[0];
+  descEl.textContent = cur ? `(${cur.desc})` : '';
+}
+
+function onMapTypeChanged(typeVal) {
+  const provider = MAP_SYSTEM.config.provider || 'amap';
+  MAP_SYSTEM.config.map_type = typeVal;
+  updateMapTypeDesc(provider, typeVal);
+  try {
+    localStorage.setItem('yun_map_config', JSON.stringify(MAP_SYSTEM.config));
+  } catch (_) {}
+}
+
 const ROUTE = { meta: null, last: null, map: null, historyMap: null, mapKey: '', amapPromise: null };
 
-function loadAmap(mapKey) {
-  if (!mapKey) return Promise.reject(new Error('当前学号未配置高德 map_key'));
+function gcj02ToBd09(lng, lat) {
+  const z = Math.sqrt(lng * lng + lat * lat) + 0.00002 * Math.sin(lat * Math.PI * 3000.0 / 180.0);
+  const theta = Math.atan2(lat, lng) + 0.000003 * Math.cos(lng * Math.PI * 3000.0 / 180.0);
+  return [z * Math.cos(theta) + 0.0065, z * Math.sin(theta) + 0.006];
+}
+
+function loadAmap(mapKey, securityCode) {
+  const key = (mapKey || MAP_SYSTEM.config.amap_key || '').trim();
+  const sec = (securityCode || MAP_SYSTEM.config.amap_security_code || '').trim();
+  if (sec) window._AMapSecurityConfig = { securityJsCode: sec };
+  if (!key) return Promise.reject(new Error('当前未配置高德 map_key / Web API Key'));
   if (window.AMap) return Promise.resolve(window.AMap);
   if (ROUTE.amapPromise) return ROUTE.amapPromise;
   ROUTE.amapPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(mapKey)}`;
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}`;
     script.onload = () => window.AMap ? resolve(window.AMap) : reject(new Error('高德 API 未提供 AMap'));
     script.onerror = () => reject(new Error('高德地图脚本加载失败'));
     document.head.appendChild(script);
@@ -1387,43 +1571,271 @@ function loadAmap(mapKey) {
   return ROUTE.amapPromise;
 }
 
-async function drawAmapRoute(ref, send) {
-  const cfg = await api('/api/control-config' + (S.student ? `?student=${encodeURIComponent(S.student)}` : ''));
-  const mapKey = (((cfg.config || {}).User || {}).map_key || '').trim();
-  const AMap = await loadAmap(mapKey);
-  const host = $('routeMap');
-  host.hidden = false;
-  $('routeCanvas').hidden = true;
-  if (!ROUTE.map) {
-    ROUTE.map = new AMap.Map(host, { zoom: 16, viewMode: '2D', resizeEnable: true });
+function loadBaiduMap(ak) {
+  const key = (ak || MAP_SYSTEM.config.baidu_ak || '').trim();
+  if (!key) return Promise.reject(new Error('未配置百度地图 AK'));
+  if (window.BMap) return Promise.resolve(window.BMap);
+  if (MAP_SYSTEM.loaders.baidu) return MAP_SYSTEM.loaders.baidu;
+  MAP_SYSTEM.loaders.baidu = new Promise((resolve, reject) => {
+    const cb = '__bmap_cb_' + Date.now();
+    window[cb] = () => {
+      delete window[cb];
+      if (window.BMap) resolve(window.BMap);
+      else reject(new Error('百度地图 API 未正确导出 BMap'));
+    };
+    const script = document.createElement('script');
+    script.src = `https://api.map.baidu.com/api?v=3.0&ak=${encodeURIComponent(key)}&callback=${cb}`;
+    script.onerror = () => {
+      delete window[cb];
+      reject(new Error('百度地图脚本加载失败，请检查 AK 及其 Referer 白名单'));
+    };
+    document.head.appendChild(script);
+  });
+  return MAP_SYSTEM.loaders.baidu;
+}
+
+function loadTencentMap(key) {
+  const k = (key || MAP_SYSTEM.config.tencent_key || '').trim();
+  if (!k) return Promise.reject(new Error('未配置腾讯地图 Key'));
+  if (window.TMap) return Promise.resolve(window.TMap);
+  if (MAP_SYSTEM.loaders.tencent) return MAP_SYSTEM.loaders.tencent;
+  MAP_SYSTEM.loaders.tencent = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = `https://map.qq.com/api/gljs?v=1.exp&key=${encodeURIComponent(k)}`;
+    script.onload = () => window.TMap ? resolve(window.TMap) : reject(new Error('腾讯 API 未提供 TMap'));
+    script.onerror = () => reject(new Error('腾讯地图脚本加载失败，请检查 Key 与权限'));
+    document.head.appendChild(script);
+  });
+  return MAP_SYSTEM.loaders.tencent;
+}
+
+function loadLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
+  if (MAP_SYSTEM.loaders.leaflet) return MAP_SYSTEM.loaders.leaflet;
+  MAP_SYSTEM.loaders.leaflet = new Promise((resolve, reject) => {
+    if (!document.querySelector('link[data-leaflet]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.dataset.leaflet = '1';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => window.L ? resolve(window.L) : reject(new Error('Leaflet 未提供 L 对象'));
+    script.onerror = () => reject(new Error('Leaflet 脚本加载失败'));
+    document.head.appendChild(script);
+  });
+  return MAP_SYSTEM.loaders.leaflet;
+}
+
+async function getEffectiveAmapKey() {
+  if (MAP_SYSTEM.config.amap_key) return MAP_SYSTEM.config.amap_key;
+  try {
+    const cfg = await api('/api/control-config' + (S.student ? `?student=${encodeURIComponent(S.student)}` : ''));
+    const mapKey = (((cfg.config || {}).User || {}).map_key || '').trim();
+    return mapKey;
+  } catch (e) {
+    return '';
   }
-  ROUTE.map.clearMap();
-  const toLngLat = p => [Number(p[0]), Number(p[1])];
-  const paths = [];
-  if (ref.length) paths.push(new AMap.Polyline({ path: ref.map(toLngLat), strokeColor: '#7d8798', strokeWeight: 4, strokeStyle: 'dashed', strokeOpacity: .9 }));
-  if (send.length) paths.push(new AMap.Polyline({ path: send.map(toLngLat), strokeColor: '#2379f6', strokeWeight: 5, strokeOpacity: .95 }));
-  ROUTE.map.add(paths);
-  const all = ref.concat(send).map(toLngLat);
-  if (all.length) ROUTE.map.setFitView(paths, false, [50, 50, 50, 50]);
+}
+
+async function renderMapPolyline(host, pathsData, purpose) {
+  const provider = MAP_SYSTEM.config.provider || 'amap';
+  const mapType = MAP_SYSTEM.config.map_type || 'normal';
+  host.hidden = false;
+
+  // 切换提供商或重绘时清理旧容器
+  if (MAP_SYSTEM.currentProvider[purpose] !== provider) {
+    host.innerHTML = '';
+    MAP_SYSTEM.instances[purpose] = null;
+    if (purpose === 'route') ROUTE.map = null;
+    if (purpose === 'history') ROUTE.historyMap = null;
+  }
+  MAP_SYSTEM.currentProvider[purpose] = provider;
+
+  if (provider === 'amap') {
+    const effectiveKey = await getEffectiveAmapKey();
+    const AMap = await loadAmap(effectiveKey, MAP_SYSTEM.config.amap_security_code);
+    let map = MAP_SYSTEM.instances[purpose];
+
+    // 配置高德图层与样式
+    let amapLayers = [new AMap.TileLayer()];
+    let amapStyle = 'amap://styles/normal';
+    if (mapType === 'satellite') {
+      amapLayers = [new AMap.TileLayer.Satellite()];
+    } else if (mapType === 'hybrid') {
+      amapLayers = [new AMap.TileLayer.Satellite(), new AMap.TileLayer.RoadNet()];
+    } else if (mapType === 'dark') {
+      amapStyle = 'amap://styles/dark';
+    }
+
+    if (!map) {
+      map = new AMap.Map(host, { zoom: 16, viewMode: '2D', resizeEnable: true, layers: amapLayers, mapStyle: amapStyle });
+      MAP_SYSTEM.instances[purpose] = map;
+      if (purpose === 'route') ROUTE.map = map;
+      if (purpose === 'history') ROUTE.historyMap = map;
+    } else {
+      if (map.setLayers) map.setLayers(amapLayers);
+      if (map.setMapStyle) map.setMapStyle(amapStyle);
+    }
+    map.clearMap();
+    const toLngLat = p => [Number(p[0]), Number(p[1])];
+    const polylines = pathsData.map(pd => new AMap.Polyline({
+      path: pd.coords.map(toLngLat),
+      strokeColor: pd.color,
+      strokeWeight: pd.weight || 5,
+      strokeStyle: pd.dashed ? 'dashed' : 'solid',
+      strokeOpacity: pd.opacity !== undefined ? pd.opacity : 0.95
+    }));
+    map.add(polylines);
+    if (polylines.length) map.setFitView(polylines, false, [50, 50, 50, 50]);
+    return;
+  }
+
+  if (provider === 'baidu') {
+    const BMap = await loadBaiduMap(MAP_SYSTEM.config.baidu_ak);
+    host.innerHTML = '';
+    const map = new BMap.Map(host);
+    map.enableScrollWheelZoom(true);
+
+    let bmapType = window.BMAP_NORMAL_MAP;
+    if (mapType === 'satellite' && window.BMAP_SATELLITE_MAP) {
+      bmapType = window.BMAP_SATELLITE_MAP;
+    } else if (mapType === 'hybrid' && window.BMAP_HYBRID_MAP) {
+      bmapType = window.BMAP_HYBRID_MAP;
+    }
+    if (bmapType && map.setMapType) {
+      map.setMapType(bmapType);
+    }
+
+    MAP_SYSTEM.instances[purpose] = map;
+    if (purpose === 'route') ROUTE.map = map;
+    if (purpose === 'history') ROUTE.historyMap = map;
+    const allPts = [];
+    pathsData.forEach(pd => {
+      const bPts = pd.coords.map(p => {
+        const [blng, blat] = gcj02ToBd09(Number(p[0]), Number(p[1]));
+        return new BMap.Point(blng, blat);
+      });
+      allPts.push(...bPts);
+      const poly = new BMap.Polyline(bPts, {
+        strokeColor: pd.color,
+        strokeWeight: pd.weight || 5,
+        strokeStyle: pd.dashed ? 'dashed' : 'solid',
+        strokeOpacity: pd.opacity !== undefined ? pd.opacity : 0.95
+      });
+      map.addOverlay(poly);
+    });
+    if (allPts.length) map.setViewport(allPts, { margins: [50, 50, 50, 50] });
+    return;
+  }
+
+  if (provider === 'tencent') {
+    const TMap = await loadTencentMap(MAP_SYSTEM.config.tencent_key);
+    host.innerHTML = '';
+    const firstPt = pathsData[0]?.coords[0] || [116.3538, 39.9604];
+    const center = new TMap.LatLng(Number(firstPt[1]), Number(firstPt[0]));
+    const mapOpts = { center, zoom: 16 };
+    if (mapType === 'satellite') {
+      mapOpts.mapTypeId = 'satellite';
+    } else if (mapType === 'dark') {
+      mapOpts.mapStyleId = 'style1';
+    }
+    const map = new TMap.Map(host, mapOpts);
+    MAP_SYSTEM.instances[purpose] = map;
+    if (purpose === 'route') ROUTE.map = map;
+    if (purpose === 'history') ROUTE.historyMap = map;
+    const styles = {};
+    const geometries = [];
+    const bounds = new TMap.LatLngBounds();
+    pathsData.forEach((pd, idx) => {
+      const sId = 's_' + idx;
+      styles[sId] = new TMap.PolylineStyle({
+        color: pd.color,
+        width: pd.weight || 5,
+        dashArray: pd.dashed ? [8, 6] : undefined
+      });
+      const tPts = pd.coords.map(p => {
+        const pt = new TMap.LatLng(Number(p[1]), Number(p[0]));
+        bounds.extend(pt);
+        return pt;
+      });
+      geometries.push({ id: 'pl_' + idx, styleId: sId, paths: tPts });
+    });
+    new TMap.MultiPolyline({ map, styles, geometries });
+    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 });
+    return;
+  }
+
+  if (provider === 'osm') {
+    const L = await loadLeaflet();
+    if (MAP_SYSTEM.instances[purpose] && MAP_SYSTEM.instances[purpose].remove) {
+      MAP_SYSTEM.instances[purpose].remove();
+    }
+    host.innerHTML = '';
+    const firstPt = pathsData[0]?.coords[0] || [116.3538, 39.9604];
+    const map = L.map(host).setView([Number(firstPt[1]), Number(firstPt[0])], 16);
+    MAP_SYSTEM.instances[purpose] = map;
+    if (purpose === 'route') ROUTE.map = map;
+    if (purpose === 'history') ROUTE.historyMap = map;
+
+    let tileUrl = (MAP_SYSTEM.config.osm_tile_url || '').trim() || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    let attribution = '© OpenStreetMap contributors';
+    if (mapType === 'satellite') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      attribution = '© Esri World Imagery';
+    } else if (mapType === 'carto_light') {
+      tileUrl = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      attribution = '© CartoDB Positron';
+    } else if (mapType === 'carto_dark') {
+      tileUrl = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+      attribution = '© CartoDB Dark Matter';
+    } else if (mapType === 'topo') {
+      tileUrl = 'https://tile.opentopomap.org/{z}/{x}/{y}.png';
+      attribution = '© OpenTopoMap contributors';
+    }
+    L.tileLayer(tileUrl, { maxZoom: 19, attribution }).addTo(map);
+
+    const grp = L.featureGroup();
+    pathsData.forEach(pd => {
+      const latlngs = pd.coords.map(p => [Number(p[1]), Number(p[0])]);
+      L.polyline(latlngs, {
+        color: pd.color,
+        weight: pd.weight || 5,
+        dashArray: pd.dashed ? '8, 6' : undefined,
+        opacity: pd.opacity !== undefined ? pd.opacity : 0.95
+      }).addTo(grp);
+    });
+    grp.addTo(map);
+    if (pathsData.some(pd => pd.coords.length)) {
+      map.fitBounds(grp.getBounds(), { padding: [50, 50] });
+    }
+    setTimeout(() => map.invalidateSize(), 150);
+    return;
+  }
+
+  throw new Error('未知地图提供商: ' + provider);
+}
+
+async function drawAmapRoute(ref, send) {
+  const host = $('routeMap');
+  $('routeCanvas').hidden = true;
+  const pathsData = [];
+  if (ref && ref.length) pathsData.push({ coords: ref, color: '#7d8798', weight: 4, dashed: true, opacity: 0.9 });
+  if (send && send.length) pathsData.push({ coords: send, color: '#2379f6', weight: 5, dashed: false, opacity: 0.95 });
+  await renderMapPolyline(host, pathsData, 'route');
 }
 
 async function drawAmapHistory(points) {
-  const cfg = await api('/api/control-config' + (S.student ? `?student=${encodeURIComponent(S.student)}` : ''));
-  const mapKey = (((cfg.config || {}).User || {}).map_key || '').trim();
-  const AMap = await loadAmap(mapKey);
   const host = $('historyMap');
-  host.hidden = false;
   $('historyCanvas').hidden = true;
-  if (!ROUTE.historyMap) ROUTE.historyMap = new AMap.Map(host, { zoom: 16, viewMode: '2D', resizeEnable: true });
-  ROUTE.historyMap.clearMap();
   const path = points.map(p => {
     const pair = String(p.point || '').split(',').map(Number);
     return [pair[0], pair[1]];
   }).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
   if (!path.length) throw new Error('历史记录没有有效轨迹坐标');
-  const line = new AMap.Polyline({ path, strokeColor: '#2379f6', strokeWeight: 5, strokeOpacity: .95 });
-  ROUTE.historyMap.add(line);
-  ROUTE.historyMap.setFitView([line], false, [50, 50, 50, 50]);
+  await renderMapPolyline(host, [{ coords: path, color: '#2379f6', weight: 5, dashed: false, opacity: 0.95 }], 'history');
 }
 
 function showHistoryCanvas(points) {
@@ -1437,6 +1849,100 @@ function showHistoryCanvas(points) {
 function showRouteCanvas() {
   $('routeMap').hidden = true;
   $('routeCanvas').hidden = false;
+}
+
+/* -------------------------------- 地图配置面板逻辑 */
+function selectMapProvider(provider) {
+  MAP_SYSTEM.config.provider = provider;
+  ['amap', 'baidu', 'tencent', 'osm'].forEach(p => {
+    const card = $('p-card-' + p);
+    if (card) card.classList.toggle('active', p === provider);
+    const grp = $('param-group-' + p);
+    if (grp) grp.hidden = (p !== provider);
+  });
+  updateMapTypeOptions(provider, MAP_SYSTEM.config.map_type);
+}
+
+async function loadMapConfig() {
+  try {
+    const res = await api('/api/map-config');
+    if (res && res.config) {
+      Object.assign(MAP_SYSTEM.config, res.config);
+    }
+  } catch (e) {
+    try {
+      const local = localStorage.getItem('yun_map_config');
+      if (local) Object.assign(MAP_SYSTEM.config, JSON.parse(local));
+    } catch (_) {}
+  }
+  const c = MAP_SYSTEM.config;
+  selectMapProvider(c.provider || 'amap');
+  updateMapTypeOptions(c.provider || 'amap', c.map_type || 'normal');
+  if ($('cfg_amap_key')) $('cfg_amap_key').value = c.amap_key || '';
+  if ($('cfg_amap_security_code')) $('cfg_amap_security_code').value = c.amap_security_code || '';
+  if ($('cfg_baidu_ak')) $('cfg_baidu_ak').value = c.baidu_ak || '';
+  if ($('cfg_tencent_key')) $('cfg_tencent_key').value = c.tencent_key || '';
+  if ($('cfg_osm_tile_url')) $('cfg_osm_tile_url').value = c.osm_tile_url || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  if ($('cfg_fallback_canvas')) $('cfg_fallback_canvas').checked = c.fallback_canvas !== false;
+  if ($('mapcfgStatus')) $('mapcfgStatus').textContent = `已读取地图配置 · 当前提供商：${c.provider || 'amap'} (${c.map_type || 'normal'})`;
+}
+
+async function saveMapConfig() {
+  const c = MAP_SYSTEM.config;
+  c.map_type = $('cfg_map_type')?.value || c.map_type || 'normal';
+  c.amap_key = ($('cfg_amap_key')?.value || '').trim();
+  c.amap_security_code = ($('cfg_amap_security_code')?.value || '').trim();
+  c.baidu_ak = ($('cfg_baidu_ak')?.value || '').trim();
+  c.tencent_key = ($('cfg_tencent_key')?.value || '').trim();
+  c.osm_tile_url = ($('cfg_osm_tile_url')?.value || '').trim() || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  c.fallback_canvas = $('cfg_fallback_canvas') ? $('cfg_fallback_canvas').checked : true;
+
+  try {
+    localStorage.setItem('yun_map_config', JSON.stringify(c));
+    const res = await api('/api/map-config', { config: c });
+    if ($('mapcfgStatus')) $('mapcfgStatus').textContent = `保存成功 · 当前地图提供商：${c.provider} · 图层：${c.map_type} · ${new Date().toLocaleTimeString()}`;
+    log(`地图配置已更新：选用 ${c.provider} 地图提供商 (图层: ${c.map_type})`);
+  } catch (e) {
+    if ($('mapcfgStatus')) $('mapcfgStatus').textContent = '保存失败：' + e.message;
+  }
+}
+
+async function testCurrentMapProvider() {
+  const badge = $('mapTestBadge');
+  const host = $('mapTestHost');
+  if (!badge || !host) return;
+  badge.className = 'badge b-warn';
+  badge.textContent = '测试加载中...';
+  const t0 = performance.now();
+  const demoRoute = [
+    [116.3532, 39.9610],
+    [116.3538, 39.9615],
+    [116.3550, 39.9620],
+    [116.3565, 39.9618],
+    [116.3570, 39.9610],
+    [116.3565, 39.9602],
+    [116.3550, 39.9600],
+    [116.3538, 39.9604],
+    [116.3532, 39.9610]
+  ];
+  MAP_SYSTEM.config.map_type = $('cfg_map_type')?.value || MAP_SYSTEM.config.map_type || 'normal';
+  MAP_SYSTEM.config.amap_key = ($('cfg_amap_key')?.value || '').trim();
+  MAP_SYSTEM.config.amap_security_code = ($('cfg_amap_security_code')?.value || '').trim();
+  MAP_SYSTEM.config.baidu_ak = ($('cfg_baidu_ak')?.value || '').trim();
+  MAP_SYSTEM.config.tencent_key = ($('cfg_tencent_key')?.value || '').trim();
+  MAP_SYSTEM.config.osm_tile_url = ($('cfg_osm_tile_url')?.value || '').trim() || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+  try {
+    await renderMapPolyline(host, [{ coords: demoRoute, color: '#2563eb', weight: 5, dashed: false, opacity: 0.95 }], 'test');
+    const cost = Math.round(performance.now() - t0);
+    badge.className = 'badge b-ok';
+    badge.textContent = `✅ ${MAP_SYSTEM.config.provider} 渲染成功 (${cost}ms)`;
+    log(`地图测试成功：${MAP_SYSTEM.config.provider} 底图与轨迹已正常渲染`);
+  } catch (err) {
+    badge.className = 'badge b-bad';
+    badge.textContent = `❌ 加载失败: ${err.message}`;
+    log(`地图测试失败 [${MAP_SYSTEM.config.provider}]: ${err.message}`, 'warn');
+  }
 }
 
 async function loadRouteMeta() {
@@ -1550,6 +2056,7 @@ async function loadControlConfig() {
       box.innerHTML = `<h3>[${sec}]</h3><div class="cfg-grid"></div>`;
       const grid = box.querySelector('.cfg-grid');
       for (const [key, val] of Object.entries(kv)) {
+        if (key.toLowerCase() === 'map_key') continue; // 将项目配置中每个学号的map_key栏移除，但不移除配置文件中的map_key
         const label = document.createElement('label'); label.textContent = key;
         const input = document.createElement('input'); input.dataset.sec = sec; input.dataset.key = key;
         if (val === '__MASKED__') { input.placeholder = '已隐藏；留空保持原值'; input.dataset.keep = '1'; }

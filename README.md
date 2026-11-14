@@ -215,7 +215,7 @@ python live_probe.py <raRunArea>            # 准入探测（0=Y 2=缺主机 3=�
 Yun2Face-Console/
 ├─ web_app.py              # 网页控制台后端（HTTP API + 运行管理 + 定时调度）
 ├─ web/                    # 网页前端（index.html / app.js，无构建）
-├─ web.py                  # 旧版独立面板（信息配置 / 路线预览 / 执行日志，默认 8080）
+├─ web_shared.py           # Web 共享服务层（路线合成预览、校区与底图检索、配置脱敏）
 ├─ main.py                 # 命令行主流程
 ├─ yun_http.py             # 请求构造 / SM2/SM4 / 响应解码 / 续期钩子
 ├─ yun_session.py          # token 401 自动重登（只重发一次）与会话统计
