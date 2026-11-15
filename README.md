@@ -215,6 +215,7 @@ python live_probe.py <raRunArea>            # 准入探测（0=Y 2=缺主机 3=�
 ```
 Yun2Face-Console/
 ├─ web_app.py              # 网页控制台后端（HTTP API + 运行管理 + 定时调度）
+├─ account_context.py       # 账号级配置 / API 客户端 / HTTP Session 隔离边界
 ├─ web/                    # 网页前端（index.html / app.js，无构建）
 ├─ web_shared.py           # Web 共享服务层（路线合成预览、校区与底图检索、配置脱敏）
 ├─ main.py                 # 命令行主流程
@@ -324,6 +325,9 @@ sudo journalctl -u yunfornewversion-web.service -f
 ## 更新日志
 
 - **2026-11-15**
+  - **多账号运行上下文隔离**：新增 `AccountContext`，网页端不再通过 `importlib.reload(main)` 与模块级 `set_args()` 切换账号；每个账号独立持有配置、`YunClient`、`requests.Session` 与 CookieJar，避免并发请求时配置、认证头和 Cookie 交叉污染；
+  - **定时任务并发安全**：新增统一的 `SCHEDULE_LOCK`，将定时任务的创建、修改、删除、启停、立即运行、到期触发和持久化纳入同一临界区；状态文件写入增加刷新、`fsync` 与同目录原子替换，并补充同一到期任务并发触发只执行一次的回归测试；
+  - **本轮范围说明**：HTTP 请求体与图片 Base64 大小限制暂不调整，待确认实际兼容上限后再处理；
   - **Linux 服务器环境适配**：启动时增加显示环境检测（`DISPLAY` / `WAYLAND_DISPLAY`），在纯终端无图形界面的 Linux 服务器环境下自动跳过浏览器唤起，彻底消除 `xdg-open: not found` 报错刷屏问题；
   - **接口与环境路径修复**：修复 `web_app.py` 中 `/api/map-config` 接口错误引用未定义的 `BASE_DIR` 导致的 `NameError`，修正为项目根目录 `HERE` 并补充服务端接口自动化回归测试；
   - **配置与敏感文件规整**：将本地地图配置 `map_config.json` 与临时技能缓存 `.agents/` 纳入 `.gitignore`，防止本地凭证与临时文件误入库。
