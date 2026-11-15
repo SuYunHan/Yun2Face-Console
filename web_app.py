@@ -2110,7 +2110,12 @@ def main(argv=None) -> int:
     print("  停止    : 在本窗口按 Ctrl+C")
     print("=" * 74)
     srv = ThreadingHTTPServer((args.host, port), Handler)
-    if not args.no_browser:
+    should_open_browser = not args.no_browser
+    if should_open_browser and os.name != "nt":
+        # 在无桌面图形界面的 Linux 服务器环境下跳过浏览器调用，避免 xdg-open 报警
+        if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+            should_open_browser = False
+    if should_open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
         srv.serve_forever()
