@@ -53,6 +53,7 @@ import core  # noqa: E402
 import face_check  # noqa: E402
 import task_tools  # noqa: E402
 import web_shared as route_web  # noqa: E402
+from account_context import AccountContext  # noqa: E402
 from PIL import Image  # noqa: E402
 
 WEB_DIR = os.path.join(HERE, "web")
@@ -66,6 +67,7 @@ STEM_RE = re.compile(r"^[A-Za-z0-9_\-\u4e00-\u9fff ]{1,96}$")
 
 # 全局：检测器与文件写入的并发保护（Pillow/cv2 的模块级对象不是线程安全的）
 _LOCK = threading.RLock()
+SCHEDULE_LOCK = threading.RLock()
 
 CFG = {
     # 云端部署使用项目根目录下的轻量账号资料目录。
@@ -495,45 +497,57 @@ def schedule_timezone_info() -> Dict[str, Any]:
 
 
 def _persist_schedules() -> None:
-    os.makedirs(RUN_DATA_DIR, exist_ok=True)
-    tmp = SCHEDULES_FILE + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(SCHEDULES, fh, ensure_ascii=False, indent=2)
-    os.replace(tmp, SCHEDULES_FILE)
+    """在统一调度锁内安全落盘；同目录替换保证读者看不到半写文件。"""
+    with SCHEDULE_LOCK:
+        os.makedirs(RUN_DATA_DIR, exist_ok=True)
+        tmp = SCHEDULES_FILE + ".tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(SCHEDULES, fh, ensure_ascii=False, indent=2)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp, SCHEDULES_FILE)
+        finally:
+            if os.path.exists(tmp):
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
 
 
 def _load_schedules() -> None:
     global _SCHEDULE_SEQ
-    if not os.path.isfile(SCHEDULES_FILE):
-        return
-    try:
-        with open(SCHEDULES_FILE, "r", encoding="utf-8") as fh:
-            SCHEDULES.update(json.load(fh) or {})
-        now = time.time()
-        changed = False
-        for item in SCHEDULES.values():
-            # 兼容旧版“间隔分钟”记录，迁移为每天 07:30。
-            if not item.get("time_of_day"):
-                item["time_of_day"] = "07:30"
-                changed = True
-            # 纠正“按服务器本地时区算出来”的旧 next_run：
-            # 例如服务器是 UTC 时，07:10 被存成 UTC 07:10（=北京时间 15:10）。
-            # 判断标准：next_run 落到定时时区后的小时/分钟必须等于设定值。
-            if not _schedule_next_run_matches(item):
-                item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
-                changed = True
-        nums = [int(str(k).lstrip("s")) for k in SCHEDULES if str(k).lstrip("s").isdigit()]
-        _SCHEDULE_SEQ = itertools.count(max(nums, default=0) + 1)
-        if changed:
-            _persist_schedules()
-    except Exception:
-        return
+    with SCHEDULE_LOCK:
+        if not os.path.isfile(SCHEDULES_FILE):
+            return
+        try:
+            with open(SCHEDULES_FILE, "r", encoding="utf-8") as fh:
+                SCHEDULES.update(json.load(fh) or {})
+            now = time.time()
+            changed = False
+            for item in SCHEDULES.values():
+                # 兼容旧版“间隔分钟”记录，迁移为每天 07:30。
+                if not item.get("time_of_day"):
+                    item["time_of_day"] = "07:30"
+                    changed = True
+                # 纠正“按服务器本地时区算出来”的旧 next_run。
+                if not _schedule_next_run_matches(item):
+                    item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
+                    changed = True
+            nums = [int(str(k).lstrip("s")) for k in SCHEDULES
+                    if str(k).lstrip("s").isdigit()]
+            _SCHEDULE_SEQ = itertools.count(max(nums, default=0) + 1)
+            if changed:
+                _persist_schedules()
+        except Exception:
+            return
 
 
 def list_schedules() -> List[Dict[str, Any]]:
-    out = list(SCHEDULES.values())
-    out.sort(key=lambda x: x.get("created", 0), reverse=True)
-    return out
+    with SCHEDULE_LOCK:
+        out = list(SCHEDULES.values())
+        out.sort(key=lambda x: x.get("created", 0), reverse=True)
+        return out
 
 
 def _validate_time_of_day(value, default: str = "07:30") -> str:
@@ -563,20 +577,21 @@ def _clean_schedule_options(raw) -> Dict[str, Any]:
 
 def create_schedule(body: Dict[str, Any]) -> Dict[str, Any]:
     """新建定时任务（保存到 SCHEDULES 并落盘）。"""
-    now = time.time()
-    sid = f"s{next(_SCHEDULE_SEQ)}"
-    tod = _validate_time_of_day(body.get("time_of_day"))
-    name = str(body.get("name") or "").strip()[:80] or sid
-    item = {
-        "id": sid, "name": name, "time_of_day": tod,
-        "enabled": bool(body.get("enabled", True)), "created": now,
-        "next_run": _next_daily(tod, now),
-        "options": _clean_schedule_options(body.get("options")),
-        "last_run": None, "last_started": None, "last_error": "",
-    }
-    SCHEDULES[sid] = item
-    _persist_schedules()
-    return item
+    with SCHEDULE_LOCK:
+        now = time.time()
+        sid = f"s{next(_SCHEDULE_SEQ)}"
+        tod = _validate_time_of_day(body.get("time_of_day"))
+        name = str(body.get("name") or "").strip()[:80] or sid
+        item = {
+            "id": sid, "name": name, "time_of_day": tod,
+            "enabled": bool(body.get("enabled", True)), "created": now,
+            "next_run": _next_daily(tod, now),
+            "options": _clean_schedule_options(body.get("options")),
+            "last_run": None, "last_started": None, "last_error": "",
+        }
+        SCHEDULES[sid] = item
+        _persist_schedules()
+        return item
 
 
 def update_schedule(body: Dict[str, Any]) -> Dict[str, Any]:
@@ -586,34 +601,33 @@ def update_schedule(body: Dict[str, Any]) -> Dict[str, Any]:
     - options 做浅合并，允许一次只改其中几项；
     - 时间变更后立即重算 next_run，编辑后不再保留旧的 last_error。
     """
-    sid = str(body.get("id") or "")
-    item = SCHEDULES.get(sid)
-    if item is None:
-        raise KeyError(sid)
-    now = time.time()
-    if "name" in body:
-        name = str(body.get("name") or "").strip()[:80]
-        item["name"] = name or sid
-    if "time_of_day" in body:
-        tod = _validate_time_of_day(body.get("time_of_day"))
-        item["time_of_day"] = tod
-        item["next_run"] = _next_daily(tod, now)
-    else:
-        # 只改名/换表时保留原来的一次性安排（含宽限内即将触发的）；
-        # 只有当 next_run 已经过期到不可能再补跑时，才顺延到下一次。
-        current = float(item.get("next_run", 0) or 0)
-        if current <= 0 or now - current > SCHEDULE_GRACE_SEC:
-            item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
-    if "enabled" in body:
-        item["enabled"] = bool(body.get("enabled"))
-    if "options" in body:
-        merged = dict(item.get("options") or {})
-        merged.update(_clean_schedule_options(body.get("options")))
-        item["options"] = merged
-    item["last_error"] = ""
-    item["updated"] = now
-    _persist_schedules()
-    return item
+    with SCHEDULE_LOCK:
+        sid = str(body.get("id") or "")
+        item = SCHEDULES.get(sid)
+        if item is None:
+            raise KeyError(sid)
+        now = time.time()
+        if "name" in body:
+            name = str(body.get("name") or "").strip()[:80]
+            item["name"] = name or sid
+        if "time_of_day" in body:
+            tod = _validate_time_of_day(body.get("time_of_day"))
+            item["time_of_day"] = tod
+            item["next_run"] = _next_daily(tod, now)
+        else:
+            current = float(item.get("next_run", 0) or 0)
+            if current <= 0 or now - current > SCHEDULE_GRACE_SEC:
+                item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
+        if "enabled" in body:
+            item["enabled"] = bool(body.get("enabled"))
+        if "options" in body:
+            merged = dict(item.get("options") or {})
+            merged.update(_clean_schedule_options(body.get("options")))
+            item["options"] = merged
+        item["last_error"] = ""
+        item["updated"] = now
+        _persist_schedules()
+        return item
 
 
 def _refresh_next_run(item: Dict[str, Any], now: float | None = None) -> None:
@@ -628,15 +642,34 @@ def set_schedule_enabled(sid: str, enabled: bool) -> Dict[str, Any]:
     **启用时一定重算 next_run**：停用期间错过的运行不能补跑，否则在凌晨/半夜
     重新启用会把过期的真实任务立刻触发一次。
     """
-    item = SCHEDULES.get(str(sid))
-    if item is None:
-        raise KeyError(sid)
-    item["enabled"] = bool(enabled)
-    if item["enabled"]:
-        _refresh_next_run(item)
-        item["last_error"] = ""
-    _persist_schedules()
-    return item
+    with SCHEDULE_LOCK:
+        item = SCHEDULES.get(str(sid))
+        if item is None:
+            raise KeyError(sid)
+        item["enabled"] = bool(enabled)
+        if item["enabled"]:
+            _refresh_next_run(item)
+            item["last_error"] = ""
+        _persist_schedules()
+        return item
+
+
+def delete_schedule(sid: str) -> None:
+    with SCHEDULE_LOCK:
+        SCHEDULES.pop(str(sid), None)
+        _persist_schedules()
+
+
+def run_schedule_now(sid: str) -> Dict[str, Any]:
+    with SCHEDULE_LOCK:
+        item = SCHEDULES.get(str(sid))
+        if item is None:
+            raise KeyError(sid)
+        result = start_run(dict(item.get("options") or {}))
+        item["last_run"] = result.get("id")
+        item["last_started"] = time.time()
+        _persist_schedules()
+        return result
 
 
 def _schedule_step(now: float | None = None, *, stagger: float = 0.0) -> int:
@@ -646,44 +679,45 @@ def _schedule_step(now: float | None = None, *, stagger: float = 0.0) -> int:
     - 晚到超过宽限：判定为错过，跳过本次并把 next_run 顺延到下一个未来时间；
     - 同一轮多个任务：相邻启动之间 sleep(stagger) 秒，错峰启动。
     """
-    now = time.time() if now is None else now
-    changed = 0
-    fired = 0
-    for item in list(SCHEDULES.values()):
-        if not item.get("enabled", True):
-            continue
-        next_run = float(item.get("next_run", 0) or 0)
-        if next_run > now:
-            continue
-        if now - next_run > SCHEDULE_GRACE_SEC:
-            # 服务停机或任务停用期间错过的运行：跳过，不补跑。
-            item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
-            item["last_skipped"] = now
-            item["skipped_count"] = int(item.get("skipped_count", 0) or 0) + 1
+    with SCHEDULE_LOCK:
+        now = time.time() if now is None else now
+        changed = 0
+        fired = 0
+        for item in list(SCHEDULES.values()):
+            if not item.get("enabled", True):
+                continue
+            next_run = float(item.get("next_run", 0) or 0)
+            if next_run > now:
+                continue
+            if now - next_run > SCHEDULE_GRACE_SEC:
+                item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
+                item["last_skipped"] = now
+                item["skipped_count"] = int(item.get("skipped_count", 0) or 0) + 1
+                changed += 1
+                continue
+            try:
+                if fired and stagger > 0:
+                    time.sleep(stagger)
+                result = start_run(dict(item.get("options") or {}))
+                item["last_run"] = result.get("id")
+                item["last_started"] = now
+                item["last_fired"] = now
+                item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
+                item["last_error"] = ""
+                fired += 1
+            except Exception as exc:  # noqa: BLE001
+                item["last_error"] = str(exc)[:300]
+                item["next_run"] = now + 300
             changed += 1
-            continue
-        try:
-            if fired and stagger > 0:
-                time.sleep(stagger)
-            result = start_run(dict(item.get("options") or {}))
-            item["last_run"] = result.get("id")
-            item["last_started"] = now
-            item["last_fired"] = now
-            item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
-            item["last_error"] = ""
-            fired += 1
-        except Exception as exc:  # noqa: BLE001
-            item["last_error"] = str(exc)[:300]
-            item["next_run"] = now + 300     # 启动失败：5 分钟后重试
-        changed += 1
-    return changed
+        if changed:
+            _persist_schedules()
+        return changed
 
 
 def _schedule_loop() -> None:
     while True:
         try:
-            if _schedule_step(stagger=SCHEDULE_STAGGER_SEC):
-                _persist_schedules()
+            _schedule_step(stagger=SCHEDULE_STAGGER_SEC)
         except Exception:  # noqa: BLE001
             # 定时线程不能因为一次异常退出，否则之后所有任务都不再触发。
             traceback.print_exc()
@@ -739,24 +773,6 @@ def is_auth_failure(exc: Exception) -> bool:
     text = str(getattr(exc, "msg", "") or exc).lower()
     return (code in {401, "401", 403, "403"} or status in {401, 403}
             or any(word in text for word in ("token", "unauthor", "auth", "登录", "凭据", "过期")))
-
-
-def _load_main_module():
-    """加载项目根 main.py，避开 core/yun_http.py 的人脸 stub。"""
-    import importlib
-    core_dir = os.path.join(HERE, "core")
-    while core_dir in sys.path:
-        sys.path.remove(core_dir)
-    if HERE in sys.path:
-        sys.path.remove(HERE)
-    sys.path.insert(0, HERE)
-    root_yun_http = os.path.abspath(os.path.join(HERE, "yun_http.py"))
-    loaded = sys.modules.get("yun_http")
-    if loaded and os.path.abspath(getattr(loaded, "__file__", "")) != root_yun_http:
-        del sys.modules["yun_http"]
-    was_loaded = "main" in sys.modules
-    module = importlib.import_module("main")
-    return importlib.reload(module) if was_loaded else module
 
 
 def persist_login_result(config_name: str, result: tuple) -> None:
@@ -847,10 +863,8 @@ def ensure_real_credentials(config_path: str) -> dict:
             raise ValueError(result.get("error") or "登录失败，无法获得凭据")
         return {"renewed": True, "reason": "token为空"}
     try:
-        module = _load_main_module()
-        module.set_args(config_path)
         # 与 Yun_For_New 构造时相同的准入请求，覆盖真实启动前的凭据校验。
-        module.default_client().post_json("/run/getHomeRunInfo", "")
+        AccountContext.from_config(config_path).client.post_json("/run/getHomeRunInfo", "")
         return {"renewed": False}
     except Exception as exc:  # noqa: BLE001
         if not is_auth_failure(exc):
@@ -1309,9 +1323,7 @@ def history_save_path(root: str, filename: str):
 
 def _history_client(student: str):
     cfg_path = _control_config_path(student)
-    module = _load_main_module()
-    module.set_args(cfg_path)
-    return module.default_client()
+    return AccountContext.from_config(cfg_path).client
 
 
 def history_terms(student: str) -> list:
@@ -1420,11 +1432,7 @@ def summarize_semester_runs(term: dict, runs_response: dict, today: date | None 
 
 def fetch_student_statistics(student: str) -> dict:
     cfg_path = _control_config_path(student)
-    # 使用 history.py/main.py 长期存在的入口，兼容服务器上旧版 yun_http.py。
-    # core 为人脸预检提供了同名 yun_http stub，导入 main 前必须恢复主项目模块。
-    main_module = _load_main_module()
-    main_module.set_args(cfg_path)
-    client = main_module.default_client()
+    client = AccountContext.from_config(cfg_path).client
     terms_response = client.post_json("/run/listXnYearXqByStudentId", "")
     if terms_response.get("code") != 200:
         raise ValueError(terms_response.get("msg") or "获取学期失败")
@@ -1737,24 +1745,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "schedule": item})
             if act == "toggle":
                 sid = str(body.get("id") or "")
-                if sid not in SCHEDULES:
+                try:
+                    item = set_schedule_enabled(sid, bool(body.get("enabled")))
+                except KeyError:
                     return self._err("定时任务不存在", 404)
-                item = set_schedule_enabled(sid, bool(body.get("enabled")))
                 return self._json({"ok": True, "schedule": item})
             if act == "delete":
                 sid = str(body.get("id") or "")
-                SCHEDULES.pop(sid, None)
-                _persist_schedules()
+                delete_schedule(sid)
                 return self._json({"ok": True})
             if act == "run_now":
                 sid = str(body.get("id") or "")
-                item = SCHEDULES.get(sid)
-                if not item:
+                try:
+                    result = run_schedule_now(sid)
+                except KeyError:
                     return self._err("定时任务不存在", 404)
-                result = start_run(dict(item.get("options") or {}))
-                item["last_run"] = result.get("id")
-                item["last_started"] = time.time()
-                _persist_schedules()
                 return self._json({"ok": True, **result})
             return self._err("未知 schedules 动作")
 

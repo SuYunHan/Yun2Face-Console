@@ -32,10 +32,11 @@ def test_summarize_semester_runs_counts_morning_evening_qualified_and_total():
     }
 
 
-def test_statistics_client_uses_legacy_main_entrypoint_for_deployed_versions():
+def test_statistics_client_uses_isolated_account_context():
     source = web_app.fetch_student_statistics.__code__
     names = set(source.co_names)
-    assert "profile_from_conf" not in names
-    assert "set_args" in names
-    assert "default_client" in names
-    assert "_load_main_module" in names
+    assert "AccountContext" in names
+    assert "from_config" in names
+    assert "set_args" not in names
+    assert "default_client" not in names
+    assert "_load_main_module" not in names

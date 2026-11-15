@@ -380,7 +380,7 @@ class RequestContext:
         - Content-Type 精确为 "application/json"（APK 就是该字符串，无 charset 后缀）；
         - User-Agent/Accept-Encoding 是 OkHttp 网络层默认头
           （okhttp3/internal/Util.java:102，userAgent="okhttp/4.9.1"），
-          由 _get_session() 统一注入，不混入业务头；
+          由每个 YunClient 自己的 Session 注入，不混入业务头；
         - Accept 与 Connection 均不发送：App 从不发 Accept（requests 默认头的
           "Accept: */*" 是脚本可识别差异），OkHttp 在 HTTP/1.1 也不发 Connection
           头（requests 默认的 "Connection: keep-alive" 同理），由共享 Session
@@ -500,7 +500,16 @@ class _FakeResponse:
         self.text = text
 
 
+def _new_session() -> requests.Session:
+    """创建一个与 App 网络层头部对齐、但 CookieJar 独立的 Session。"""
+    session = requests.Session()
+    session.headers.clear()
+    session.headers.update({"User-Agent": _DEFAULT_UA, "Accept-Encoding": "gzip"})
+    return session
+
+
 def _real_transport(url: str, data: str, headers: dict, timeout) -> Any:
+    """旧兼容入口；新 YunClient 默认使用自己的 Session。"""
     return _get_session().post(url=url, data=data, headers=headers, timeout=timeout)
 
 
@@ -508,7 +517,7 @@ _SESSION: Optional[requests.Session] = None
 
 
 def _get_session() -> requests.Session:
-    """进程共享 Session（可注入替换）：
+    """返回旧接口使用的进程共享 Session（新客户端不再使用）：
 
     - 头部：清除 requests 默认头（Accept: */*、Connection: keep-alive、
       python-requests UA 均为 App 不会出现的可观测差异），只保留 OkHttp 网络层
@@ -520,10 +529,7 @@ def _get_session() -> requests.Session:
     """
     global _SESSION
     if _SESSION is None:
-        s = requests.Session()
-        s.headers.clear()
-        s.headers.update({"User-Agent": _DEFAULT_UA, "Accept-Encoding": "gzip"})
-        _SESSION = s
+        _SESSION = _new_session()
     return _SESSION
 
 
@@ -562,10 +568,15 @@ class YunClient:
                  timeout: Tuple[float, float] = DEFAULT_TIMEOUT,
                  legacy_uuid: bool = False,
                  recover: Optional[Callable[[], Optional[str]]] = None,
-                 reauth_log: Optional[Callable[[str], None]] = None):
+                 reauth_log: Optional[Callable[[str], None]] = None,
+                 session: Optional[requests.Session] = None):
         self.profile = profile
         self.base_url = base_url
-        self.transport = transport or _real_transport
+        # 每个客户端拥有自己的 Session/CookieJar，避免多账号认证状态串用。
+        # 注入 transport 的离线测试不创建无用 Session；需要时仍可显式注入。
+        self.session = session if session is not None else (
+            _new_session() if transport is None else None)
+        self.transport = transport or self._session_transport
         self.rng = rng
         self._now = now or (lambda: int(time.time()))
         self.now = self._now  # 公开别名：人脸窗口计时等调用方读取注入时钟
@@ -586,6 +597,11 @@ class YunClient:
                              "retried": 0, "retry_ok": 0}
         self.last_ctx: Optional[RequestContext] = None
         self.sent: list = []  # 每次请求的 (router/url, ctx)；输出前请 redact headers
+
+    def _session_transport(self, url: str, data: str, headers: dict, timeout) -> Any:
+        if self.session is None:  # pragma: no cover - 构造约束的防御分支
+            raise YunError("客户端没有可用的 HTTP Session")
+        return self.session.post(url=url, data=data, headers=headers, timeout=timeout)
 
     # ---- 上下文：每请求新 uuid(未固定时)/utc/sign/key 三者一致绑定 ----
     def new_context(self, fixed_envelope: bool = False) -> RequestContext:
