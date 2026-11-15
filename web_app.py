@@ -1585,7 +1585,7 @@ class Handler(BaseHTTPRequestHandler):
                                "path": _control_config_path(student),
                                "config": control_config(student)})
         if path == "/api/map-config":
-            return self._json({"ok": True, "config": route_web.get_map_config(BASE_DIR)})
+            return self._json({"ok": True, "config": route_web.get_map_config(HERE)})
         if path == "/api/route-meta":
             return self._json({"ok": True, **route_meta()})
         if path == "/api/routes":
@@ -1684,7 +1684,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/map-config":
             try:
                 payload = body.get("config") if isinstance(body.get("config"), dict) else body
-                cfg = route_web.save_map_config(payload or {}, BASE_DIR)
+                cfg = route_web.save_map_config(payload or {}, HERE)
                 return self._json({"ok": True, "config": cfg})
             except Exception as exc:  # noqa: BLE001
                 return self._err(str(exc))
