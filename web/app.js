@@ -837,11 +837,17 @@ function renderScheduleList() {
     // 服务停机/任务停用期间错过的运行会被跳过并顺延，这里明确显示，避免误以为没跑。
     const skipped = s.skipped_count ? ` · <span style="color:#ffb020">已跳过 ${s.skipped_count} 次过期运行${s.last_skipped ? '（最近 ' + fmtTsIn(s.last_skipped, off) + '）' : ''}</span>` : '';
     const label = s.name && s.name !== stu ? ` <span class="hint">${s.name}</span>` : '';
+    const grp = o.task_group || (o.task_file === 'female' ? 'female' : (o.task_file === 'male' ? 'male' : ''));
+    let grpLabel = '';
+    if (grp === 'female') grpLabel = '女组（每次随机抽表）';
+    else if (grp === 'male') grpLabel = '男组（每次随机抽表）';
+    else grpLabel = o.task_file || '随机';
+    const lastPick = s.last_task_file ? ` · 最近运行：${s.last_task_file}` : '';
     return `<div class="runitem ${s.id === SCH.editing ? 'active' : ''}">
       <span class="st ${s.enabled ? 'st-running' : 'st-stopped'}">${s.enabled ? '启用' : '停用'}</span>
       <div style="flex:1"><div><b>${stu}</b>${label}</div>
         <div class="meta">每天 ${s.time_of_day || '07:30'} · 下次 ${next} · 上次 ${last}${skipped}</div>
-        <div class="meta">${o.mode === 'dry' ? '离线演练' : '真实运行'} · ${o.task_folder || '?'}/${o.task_file || '随机'}${o.face_photo ? ' · 人脸 ' + o.face_photo : ''}</div>
+        <div class="meta">${o.mode === 'dry' ? '离线演练' : '真实运行'} · ${o.task_folder || '?'}/${grpLabel}${lastPick}${o.face_photo ? ' · 人脸 ' + o.face_photo : ''}</div>
         ${s.last_error ? `<div class="detail" style="color:#ff8a8a">${s.last_error}</div>` : ''}</div>
       <button onclick="editSchedule('${s.id}')">修改</button>
       <button onclick="toggleSchedule('${s.id}',${!s.enabled})">${s.enabled ? '停用' : '启用'}</button>
@@ -869,7 +875,10 @@ async function applyScheduleForm(item) {
     $('schFolder').value = o.task_folder;
     await fillScheduleTasks();
   }
-  if (o.task_file && [...$('schTask').options].some(x => x.value === o.task_file)) {
+  const targetGroup = o.task_group || (o.task_file === 'female' || o.task_file === 'tasklist_8.json' ? 'female' : 'male');
+  if ([...$('schTask').options].some(x => x.value === targetGroup)) {
+    $('schTask').value = targetGroup;
+  } else if ([...$('schTask').options].some(x => x.value === o.task_file)) {
     $('schTask').value = o.task_file;
   }
   const ph = SCH.photos.findIndex(x => x.name === o.face_photo);
@@ -910,8 +919,20 @@ async function fillScheduleFolders() {
 async function fillScheduleTasks() {
   const p = scheduleProject(), folder = $('schFolder').value;
   if (!p || !folder) { $('schTask').innerHTML = ''; return; }
-  const j = await api(`/api/tasks?project=${encodeURIComponent(p.path)}&folder=${encodeURIComponent(folder)}`);
-  $('schTask').innerHTML = j.tasks.filter(t => !t.error).map(t => `<option value="${t.file}">${t.file} · ${t.mileage}km</option>`).join('');
+  try {
+    const j = await api(`/api/tasks?project=${encodeURIComponent(p.path)}&folder=${encodeURIComponent(folder)}`);
+    const maleCount = (j.groups && j.groups.male) ? j.groups.male.length : (j.tasks ? j.tasks.filter(t => (t.group || 'male') === 'male').length : 0);
+    const femaleCount = (j.groups && j.groups.female) ? j.groups.female.length : (j.tasks ? j.tasks.filter(t => t.group === 'female').length : 0);
+    $('schTask').innerHTML = `
+      <option value="male">男组（每次随机抽表，共 ${maleCount} 张）</option>
+      <option value="female">女组（每次随机抽表，共 ${femaleCount} 张）</option>
+    `;
+  } catch (e) {
+    $('schTask').innerHTML = `
+      <option value="male">男组（每次随机抽表）</option>
+      <option value="female">女组（每次随机抽表）</option>
+    `;
+  }
 }
 function renderScheduleDetectOptions() {
   const i = $('schPhoto').value;
@@ -929,8 +950,9 @@ async function saveSchedule() {
     return;
   }
   const photo = $('schPhoto').value === '' ? null : SCH.photos[Number($('schPhoto').value)];
+  const selectedGroup = $('schTask').value || 'male';
   const options = { mode: $('schMode').value, project: p.path, student: p.student || S.student,
-    config: p.config, task_folder: $('schFolder').value, task_file: $('schTask').value,
+    config: p.config, task_folder: $('schFolder').value, task_file: selectedGroup, task_group: selectedGroup,
     face_student: photo ? S.student : null, face_photo: photo ? photo.name : null,
     face_stem: photo ? photo.stem : null };
   const name = ($('schName').value || '').trim() || (p.student || S.student);
@@ -1229,22 +1251,27 @@ async function loadTasks() {
     const tb = $('trows');
     tb.innerHTML = '';
     if (!T.tasks.length) {
-      tb.innerHTML = `<tr><td colspan="7" class="hint" style="padding:18px">
+      tb.innerHTML = `<tr><td colspan="8" class="hint" style="padding:18px">
         该目录下没有任务表。可点右上角"导入任务表"，或把 --tasks 指向项目的 tasks_fch</td></tr>`;
       return;
     }
     for (const t of T.tasks) {
       const tr = document.createElement('tr');
       if (t.error) {
-        tr.innerHTML = `<td>${t.file}</td><td colspan="5" class="detail" style="color:#ff5c5c">${t.error}</td>
+        tr.innerHTML = `<td>${t.file}</td><td colspan="6" class="detail" style="color:#ff5c5c">${t.error}</td>
           <td><button class="danger" onclick="deleteTask('${t.file}')">删除</button></td>`;
         tb.appendChild(tr);
         continue;
       }
+      const grp = t.group || 'male';
+      const grpBadge = grp === 'female'
+        ? `<span class="badge b-warn" style="cursor:pointer" title="点击切换为男组" onclick="setTaskGroup('${t.file}','male')">女组</span>`
+        : `<span class="badge b-ok" style="cursor:pointer" title="点击切换为女组" onclick="setTaskGroup('${t.file}','female')">男组</span>`;
       tr.innerHTML = `
         <td><div>${t.file}</div>
             <div class="mono" style="color:#9aa3b5">${t.raType || ''} · raId=${t.raId ?? '—'}
               · ${t.studentId || '—'}</div></td>
+        <td>${grpBadge}</td>
         <td>${t.mileage ?? '—'} km<br><span class="hint">${t.duration ?? '—'} s
               ${t.avg_speed_kmh ? '· ' + t.avg_speed_kmh + ' km/h' : ''}</span></td>
         <td>${t.pace ?? '—'}<br><span class="hint">${t.cadence ?? '—'} 步/分</span></td>
@@ -1294,13 +1321,36 @@ async function batchValidateTasks() {
   log(`✔ 校验完成：通过 ${pass} / 有提示 ${warn} / 不通过 ${fail}`);
 }
 
+async function setTaskGroup(file, group) {
+  try {
+    await api('/api/task', { action: 'set_group', name: file, group });
+    log(`已将任务表 ${file} 设为 ${group === 'female' ? '女组' : '男组'}`);
+    await loadTasks();
+  } catch (e) { alert('设置组别失败：' + e.message); }
+}
+
+async function changeCurrentTaskGroup(group) {
+  if (!T.cur || !T.cur.summary || !T.cur.summary.file) return;
+  const file = T.cur.summary.file;
+  try {
+    await api('/api/task', { action: 'set_group', name: file, group });
+    T.cur.summary.group = group;
+    T.cur.summary.group_label = group === 'female' ? '女组' : '男组';
+    $('taskMeta').textContent =
+      `${T.cur.summary.points} 点 · ${T.cur.summary.mileage} km · ${T.cur.summary.duration}s · 配速 ${T.cur.summary.pace} · 步频 ${T.cur.summary.cadence} · 围栏 ${T.cur.summary.fence} · ${T.cur.summary.group_label}`;
+    log(`已将任务表 ${file} 设为 ${T.cur.summary.group_label}`);
+    await loadTasks();
+  } catch (e) { alert('设置组别失败：' + e.message); }
+}
+
 async function openTask(file) {
   const r = await api('/api/task?name=' + encodeURIComponent(file));
   T.cur = r;
   $('taskTitle').textContent = file;
   const s = r.summary;
   $('taskMeta').textContent =
-    `${s.points} 点 · ${s.mileage} km · ${s.duration}s · 配速 ${s.pace} · 步频 ${s.cadence} · 围栏 ${s.fence}`;
+    `${s.points} 点 · ${s.mileage} km · ${s.duration}s · 配速 ${s.pace} · 步频 ${s.cadence} · 围栏 ${s.fence} · ${s.group_label || '男组'}`;
+  if ($('taskDlgGroup')) $('taskDlgGroup').value = s.group || 'male';
   $('genName').value = file.replace(/\.json$/i, '') + '_new.json';
   $('genPace').value = '';
   $('genDrift').value = '';

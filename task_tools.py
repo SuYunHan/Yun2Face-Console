@@ -38,6 +38,149 @@ import random
 from typing import Any, Dict, List, Optional, Tuple
 
 EARTH_RADIUS = 6371000.0
+HERE = os.path.dirname(os.path.abspath(__file__))
+TASK_GROUPS_FILE = os.path.join(HERE, "web_data", "task_groups.json")
+
+TASK_GROUPS: Dict[str, str] = {
+    "male": "男组",
+    "female": "女组",
+}
+FEMALE_MILEAGE_MAX_KM = 1.5
+
+
+def normalize_task_group(value: Any, default: str = "") -> str:
+    """将组别标识规范化为 'male'（男组）或 'female'（女组）。"""
+    raw = str(value or "").strip().lower()
+    if raw in ("male", "m", "boy", "boys", "男", "男组", "男生", "1"):
+        return "male"
+    if raw in ("female", "f", "girl", "girls", "女", "女组", "女生", "2"):
+        return "female"
+    return default
+
+
+def task_group_label(group: Any) -> str:
+    """返回组别的中文显示名称（男组 / 女组）。"""
+    return "女组" if normalize_task_group(group) == "female" else "男组"
+
+
+def load_task_groups_map(groups_file: Optional[str] = None) -> Dict[str, str]:
+    """读取持久化的任务表分组映射（文件名 → 'male' | 'female'）。"""
+    target = groups_file or TASK_GROUPS_FILE
+    if not os.path.isfile(target):
+        return {}
+    try:
+        with open(target, "r", encoding="utf-8") as fh:
+            raw = json.load(fh)
+        if not isinstance(raw, dict):
+            return {}
+        out: Dict[str, str] = {}
+        for k, v in raw.items():
+            g = normalize_task_group(v)
+            if g:
+                out[str(k)] = g
+        return out
+    except Exception:
+        return {}
+
+
+def save_task_groups_map(mapping: Dict[str, str], groups_file: Optional[str] = None) -> None:
+    """持久化保存任务表分组映射。"""
+    target = groups_file or TASK_GROUPS_FILE
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    clean = {str(k): normalize_task_group(v, "male") for k, v in (mapping or {}).items()
+             if normalize_task_group(v)}
+    tmp = target + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(clean, fh, ensure_ascii=False, indent=2)
+    os.replace(tmp, target)
+
+
+def infer_task_group(
+    d: Any,
+    filename: str = "",
+    groups_map: Optional[Dict[str, str]] = None,
+    mileage: Any = None,
+    mileage_km: Any = None,
+) -> str:
+    """判定单张任务表所属组别（'male' 男组 / 'female' 女组）。
+
+    优先级：
+    1. 任务表 JSON 内显式声明的 group / data.group 字段；
+    2. web_data/task_groups.json 中按文件名记录的分组映射；
+    3. 文件名语义（如含 female/girl/女）；
+    4. 里程阈值：单次里程 < 1.5 km（如 1.2 km 档）归为女组，其余归为男组。
+    """
+    if isinstance(d, dict):
+        data = d.get("data") if isinstance(d.get("data"), dict) else d
+        explicit = normalize_task_group(d.get("group") or data.get("group"))
+        if explicit:
+            return explicit
+    else:
+        data = {}
+
+    fname_source = filename or (d if isinstance(d, str) else (d.get("file") if isinstance(d, dict) else ""))
+    fname = os.path.basename(str(fname_source or ""))
+    if fname:
+        gmap = groups_map if groups_map is not None else load_task_groups_map()
+        if fname in gmap:
+            return gmap[fname]
+        lower_name = fname.lower()
+        if any(tok in lower_name for tok in ("female", "girl", "woman", "women", "女")):
+            return "female"
+        if any(tok in lower_name for tok in ("male", "boy", "man", "men", "男")):
+            return "male"
+
+    mileage_raw = mileage_km if mileage_km is not None else mileage
+    if mileage_raw is None:
+        if isinstance(d, (int, float)):
+            mileage_raw = d
+        elif isinstance(d, dict):
+            mileage_raw = data.get("recordMileage")
+            if mileage_raw is None:
+                mileage_raw = d.get("recordMileage", d.get("mileage"))
+            if mileage_raw is None and isinstance(data.get("pointsList"), list) and data["pointsList"]:
+                last_pt = data["pointsList"][-1]
+                if isinstance(last_pt, dict) and last_pt.get("runMileage") is not None:
+                    try:
+                        rm = float(last_pt["runMileage"])
+                        mileage_raw = rm / 1000.0 if rm > 100 else rm
+                    except (TypeError, ValueError):
+                        pass
+
+    try:
+        km = float(mileage_raw)
+        if 0 < km < FEMALE_MILEAGE_MAX_KM:
+            return "female"
+    except (TypeError, ValueError):
+        pass
+    return "male"
+
+
+def set_task_group(path: str, group: str, groups_file: Optional[str] = None) -> Dict[str, Any]:
+    """设置指定任务表的组别（男组/女组），持久化到分组配置及任务表元数据。"""
+    norm = normalize_task_group(group)
+    if not norm:
+        raise ValueError(f"非法任务表组别: {group!r}（仅支持 male/男组 或 female/女组）")
+    fname = os.path.basename(path)
+    gmap = load_task_groups_map(groups_file)
+    gmap[fname] = norm
+    save_task_groups_map(gmap, groups_file)
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                raw = json.load(fh)
+            if isinstance(raw, dict):
+                if isinstance(raw.get("data"), dict):
+                    raw["data"]["group"] = norm
+                else:
+                    raw["group"] = norm
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump(raw, fh, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+    return task_summary(path, groups_file=groups_file) if os.path.isfile(path) else {
+        "file": fname, "path": path, "group": norm, "group_label": task_group_label(norm)
+    }
 
 
 # ---------------------------------------------------------------- 基础
@@ -73,13 +216,17 @@ def load_task(path: str) -> dict:
     return d
 
 
-def task_summary(path: str) -> Dict[str, Any]:
+def task_summary(path: str, groups_file: Optional[str] = None,
+                 groups_map: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """列表用摘要（不做重校验，快）。"""
     d = load_task(path)
     data = d["data"]
     pts = data["pointsList"]
+    fname = os.path.basename(path)
+    gmap = groups_map if groups_map is not None else load_task_groups_map(groups_file)
+    group = infer_task_group(d, filename=fname, groups_map=gmap)
     out = {
-        "file": os.path.basename(path),
+        "file": fname,
         "path": path,
         "bytes": os.path.getsize(path),
         "points": len(pts),
@@ -94,6 +241,8 @@ def task_summary(path: str) -> Dict[str, Any]:
         "fence": len(data.get("manageList") or []),
         "start": (pts[0] or {}).get("point") if pts else None,
         "end": (pts[-1] or {}).get("point") if pts else None,
+        "group": group,
+        "group_label": task_group_label(group),
     }
     if out["duration"] and out["mileage"]:
         # recordMileage 单位是公里，duration 是秒

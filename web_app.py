@@ -28,6 +28,7 @@ import json
 import mimetypes
 import os
 import posixpath
+import random
 import re
 import socket
 import subprocess
@@ -293,12 +294,56 @@ def _cleanup_task_pick(pick_dir: Optional[str]) -> None:
     shutil.rmtree(pick_dir, ignore_errors=True)
 
 
-def _prepare_task_dir(proj: str, folder: str, want: str, run_id: str):
+def _task_file_group(path: str, groups_map: Optional[Dict[str, str]] = None) -> str:
+    """判定指定任务表文件的组别（'male' 男组 / 'female' 女组）。"""
+    fname = os.path.basename(path)
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+        if isinstance(d, dict):
+            return task_tools.infer_task_group(d, filename=fname, groups_map=groups_map)
+    except Exception:
+        pass
+    return task_tools.infer_task_group({}, filename=fname, groups_map=groups_map)
+
+
+def list_group_tasks(proj: str, folder: str, group: str) -> List[str]:
+    """列出指定项目与任务表目录下属于目标组别（male/female）的所有任务表文件名。"""
+    norm_group = task_tools.normalize_task_group(group)
+    if not norm_group:
+        raise ValueError(f"非法任务表组别: {group!r}")
+    if not folder or not TASK_FOLDER_RE.match(folder):
+        raise ValueError(f"非法任务表目录名: {folder!r}")
+    tdir = os.path.abspath(os.path.join(proj, folder))
+    if os.path.commonpath([tdir, proj]) != proj:
+        raise ValueError(f"任务表目录越出项目范围: {folder!r}")
+    if not os.path.isdir(tdir):
+        raise ValueError(f"任务表目录不存在: {tdir}")
+    gmap = task_tools.load_task_groups_map()
+    names = sorted(f for f in os.listdir(tdir) if f.lower().endswith(".json"))
+    return [f for f in names if _task_file_group(os.path.join(tdir, f), gmap) == norm_group]
+
+
+def pick_random_group_task(proj: str, folder: str, group: str, rng=None) -> tuple[str, List[str]]:
+    """从指定组别（男组/女组）的任务表中随机抽取一张表，返回 (chosen_file, group_files)。"""
+    norm_group = task_tools.normalize_task_group(group)
+    if not norm_group:
+        raise ValueError(f"非法任务表组别: {group!r}")
+    group_files = list_group_tasks(proj, folder, norm_group)
+    if not group_files:
+        label = task_tools.task_group_label(norm_group)
+        raise ValueError(f"任务表目录 {folder} 中没有可用的『{label}』任务表")
+    chooser = rng if rng is not None else random
+    return chooser.choice(group_files), group_files
+
+
+def _prepare_task_dir(proj: str, folder: str, want: str, run_id: str, group: str = ""):
     """解析传给 -t 的任务表目录，返回 (task_dir, note, pick_dir)。
 
     main.py 在 -a 下会对 `-t` 目录里的 json 做 random.choice。因此**指定单表时
     不能直接把整个 tasks_* 目录传进去**，否则实际跑的可能是别的表。做法：
     把选中的表复制到一个只含它的临时目录，再把 -t 指向那里。
+    若指定了组别（group='male'|'female' 或 want 为组别名），则先在该组别内随机抽取一张表再锁定。
     """
     if not folder:
         return "", "", None
@@ -312,13 +357,26 @@ def _prepare_task_dir(proj: str, folder: str, want: str, run_id: str):
     names = sorted(f for f in os.listdir(tdir) if f.lower().endswith(".json"))
     if not names:
         raise ValueError(f"任务表目录里没有 json: {tdir}")
+
+    norm_group = task_tools.normalize_task_group(group)
+    if not norm_group and want and want not in names:
+        norm_group = task_tools.normalize_task_group(want)
+        if norm_group:
+            want = ""
+
+    group_note = ""
+    if norm_group and not want:
+        want, group_files = pick_random_group_task(proj, folder, norm_group)
+        label = task_tools.task_group_label(norm_group)
+        group_note = f"已从{label}随机抽取任务表 {want}（组内共 {len(group_files)} 张候选表）"
+
     if not want:
         note = f"目录内有 {len(names)} 个表，项目将随机挑选" if len(names) > 1 else ""
         return tdir, note, None
     if want not in names:
         raise ValueError(f"该目录里没有 {want}（现有: {names}）")
     if len(names) == 1:
-        return tdir, "", None
+        return tdir, group_note, None
 
     import shutil
     pick_dir = _task_pick_dir(run_id)
@@ -331,13 +389,15 @@ def _prepare_task_dir(proj: str, folder: str, want: str, run_id: str):
     if os.path.getsize(src) != os.path.getsize(dst):
         _cleanup_task_pick(pick_dir)
         raise ValueError(f"任务表复制校验失败: {src} → {dst}")
-    return pick_dir, f"已锁定任务表 {want}（单表目录，项目不会随机换表）", pick_dir
+    lock_note = group_note or f"已锁定任务表 {want}（单表目录，项目不会随机换表）"
+    return pick_dir, lock_note, pick_dir
 
 
 def start_run(opts: Dict[str, Any]) -> Dict[str, Any]:
     """启动一个 main.py 实例。
 
     - **项目由 opts["project"] 决定**（一个项目=一个账号=一份 config + 自己的 tasks_* 目录）。
+    - **指定 task_group 时从对应组别（男组/女组）中随机抽取一张表并复制到单表目录**。
     - **指定 task_file 时把该表复制到单表目录再 -t**，避免 main.py 随机换表。
     - 未指定 task_file 时按项目自身行为从目录里随机挑一张，并在 note 里如实说明。
     """
@@ -360,13 +420,25 @@ def start_run(opts: Dict[str, Any]) -> Dict[str, Any]:
         # 先分配 run_id（单表临时目录要用它），校验失败时只浪费一个编号。
         run_id = f"r{next(_RUN_SEQ)}"
         folder = (opts.get("task_folder") or "").strip()
+        raw_file = str(opts.get("task_file") or "").strip()
+        norm_group = task_tools.normalize_task_group(opts.get("task_group"))
+        if not norm_group and raw_file and task_tools.normalize_task_group(raw_file):
+            norm_group = task_tools.normalize_task_group(raw_file)
+            raw_file = ""
+        if norm_group and folder and not raw_file:
+            raw_file, group_files = pick_random_group_task(proj, folder, norm_group)
+            notes.append(f"已从{task_tools.task_group_label(norm_group)}随机抽取任务表 {raw_file}（组内共 {len(group_files)} 张）")
+        elif norm_group and raw_file and opts.get("_picked_from_group"):
+            notes.append(f"已从{task_tools.task_group_label(norm_group)}随机抽取任务表 {raw_file}")
+
         task_dir, task_note, pick_dir = _prepare_task_dir(
-            proj, folder, str(opts.get("task_file") or ""), run_id)
+            proj, folder, raw_file, run_id, group=norm_group)
         if task_note:
             notes.append(task_note)
 
+        effective_task_file = raw_file or opts.get("task_file")
         try:
-            argv = _main_argv(dict(opts, task_dir=task_dir))
+            argv = _main_argv(dict(opts, task_dir=task_dir, task_file=effective_task_file))
         except Exception:
             _cleanup_task_pick(pick_dir)
             raise
@@ -387,7 +459,8 @@ def start_run(opts: Dict[str, Any]) -> Dict[str, Any]:
             "id": run_id, "argv": argv, "proc": proc, "lines": [],
             "status": "running", "started": time.time(), "ended": None,
             "returncode": None, "mode": opts.get("mode", "real"),
-            "task_file": opts.get("task_file"), "task_folder": folder,
+            "task_file": effective_task_file, "task_group": norm_group or None,
+            "task_folder": folder,
             "config": cfgp, "project": os.path.basename(account_dir),
             "student": opts.get("student") or "",
             "account_dir": account_dir,
@@ -396,7 +469,8 @@ def start_run(opts: Dict[str, Any]) -> Dict[str, Any]:
         threading.Thread(target=_reader, args=(run_id, proc.stdout), daemon=True).start()
         threading.Thread(target=_watcher, args=(run_id,), daemon=True).start()
         _persist_run(RUNS[run_id])
-        return {"id": run_id, "argv": argv, "note": note}
+        return {"id": run_id, "argv": argv, "note": note,
+                "task_file": effective_task_file, "task_group": norm_group or None}
 
 
 def run_view(run_id: str, since: int = 0) -> Dict[str, Any]:
@@ -406,7 +480,8 @@ def run_view(run_id: str, since: int = 0) -> Dict[str, Any]:
     lines = run["lines"]
     return {"id": run_id, "status": run["status"], "verdict": run.get("verdict", ""),
             "returncode": run["returncode"], "mode": run["mode"],
-            "task_file": run.get("task_file"), "task_folder": run.get("task_folder"),
+            "task_file": run.get("task_file"), "task_group": run.get("task_group"),
+            "task_folder": run.get("task_folder"),
             "project": run.get("project"), "config": run.get("config"),
             "started": run["started"], "ended": run["ended"],
             "elapsed": round((run["ended"] or time.time()) - run["started"], 1),
@@ -442,6 +517,7 @@ def list_runs() -> List[Dict[str, Any]]:
     for rid, run in RUNS.items():
         out.append({"id": rid, "status": run["status"], "verdict": run.get("verdict", ""),
                     "mode": run["mode"], "task_file": run.get("task_file"),
+                    "task_group": run.get("task_group"),
                     "task_folder": run.get("task_folder"),
                     "project": run.get("project"), "config": run.get("config"),
                     "note": run.get("note", ""),
@@ -563,7 +639,7 @@ def _validate_time_of_day(value, default: str = "07:30") -> str:
 
 
 def _clean_schedule_options(raw) -> Dict[str, Any]:
-    """定时任务的 options 必须是对象；mode 只允许 dry/real。"""
+    """定时任务的 options 必须是对象；mode 只允许 dry/real；task_group 支持男组/女组。"""
     if raw is None:
         return {}
     if not isinstance(raw, dict):
@@ -572,7 +648,35 @@ def _clean_schedule_options(raw) -> Dict[str, Any]:
     mode = options.get("mode")
     if mode is not None and mode not in ("dry", "real"):
         raise ValueError(f"未知运行模式: {mode!r}")
+    if "task_group" in options and options.get("task_group") not in (None, ""):
+        norm_group = task_tools.normalize_task_group(options.get("task_group"))
+        if not norm_group:
+            raise ValueError(f"未知任务表组别: {options.get('task_group')!r}")
+        options["task_group"] = norm_group
+    if "task_file" in options:
+        tf = str(options.get("task_file") or "").strip()
+        norm_tf = task_tools.normalize_task_group(tf)
+        if norm_tf:
+            options["task_group"] = norm_tf
+            options["task_file"] = norm_tf
     return options
+
+
+def _schedule_run_options(options: Dict[str, Any]) -> Dict[str, Any]:
+    """构造单次定时触发的运行参数：若配置了男组/女组，每次执行都在该组内随机抽取一张表。"""
+    opts = dict(options or {})
+    group = task_tools.normalize_task_group(opts.get("task_group") or opts.get("task_file"))
+    if group:
+        opts["task_group"] = group
+        folder = (opts.get("task_folder") or "tasks_fch").strip()
+        proj = os.path.abspath(CFG["project"])
+        if folder and TASK_FOLDER_RE.match(folder) and os.path.isdir(os.path.join(proj, folder)):
+            chosen, _ = pick_random_group_task(proj, folder, group)
+            opts["task_file"] = chosen
+            opts["_picked_from_group"] = True
+        else:
+            opts["task_file"] = ""
+    return opts
 
 
 def create_schedule(body: Dict[str, Any]) -> Dict[str, Any]:
@@ -665,9 +769,12 @@ def run_schedule_now(sid: str) -> Dict[str, Any]:
         item = SCHEDULES.get(str(sid))
         if item is None:
             raise KeyError(sid)
-        result = start_run(dict(item.get("options") or {}))
+        run_opts = _schedule_run_options(item.get("options") or {})
+        result = start_run(run_opts)
         item["last_run"] = result.get("id")
         item["last_started"] = time.time()
+        if result.get("task_file") or run_opts.get("task_file"):
+            item["last_task_file"] = result.get("task_file") or run_opts.get("task_file")
         _persist_schedules()
         return result
 
@@ -698,10 +805,13 @@ def _schedule_step(now: float | None = None, *, stagger: float = 0.0) -> int:
             try:
                 if fired and stagger > 0:
                     time.sleep(stagger)
-                result = start_run(dict(item.get("options") or {}))
+                run_opts = _schedule_run_options(item.get("options") or {})
+                result = start_run(run_opts)
                 item["last_run"] = result.get("id")
                 item["last_started"] = now
                 item["last_fired"] = now
+                if result.get("task_file") or run_opts.get("task_file"):
+                    item["last_task_file"] = result.get("task_file") or run_opts.get("task_file")
                 item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
                 item["last_error"] = ""
                 fired += 1
@@ -1241,6 +1351,14 @@ def task_path_in(project_dir: str, folder: str, name: str) -> str:
     return os.path.join(base, n)
 
 
+def _group_tasks_summary(tasks: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+    """把任务表摘要列表按男组/女组归类。"""
+    return {
+        "male": [t["file"] for t in tasks if not t.get("error") and t.get("group") == "male"],
+        "female": [t["file"] for t in tasks if not t.get("error") and t.get("group") == "female"],
+    }
+
+
 def list_tasks_for(project_dir: str, folder: str) -> List[Dict[str, Any]]:
     """列出主项目共享 tasks_* 目录下的任务表。"""
     proj = os.path.abspath(CFG["project"])
@@ -1250,12 +1368,13 @@ def list_tasks_for(project_dir: str, folder: str) -> List[Dict[str, Any]]:
     d = os.path.join(proj, fd)
     if not os.path.isdir(d):
         return []
+    gmap = task_tools.load_task_groups_map()
     out = []
     for name in sorted(os.listdir(d)):
         if not name.lower().endswith(".json"):
             continue
         try:
-            out.append(task_tools.task_summary(os.path.join(d, name)))
+            out.append(task_tools.task_summary(os.path.join(d, name), groups_map=gmap))
         except Exception as exc:  # noqa: BLE001
             out.append({"file": name, "path": os.path.join(d, name),
                         "error": f"{type(exc).__name__}: {exc}"[:140]})
@@ -1266,12 +1385,13 @@ def list_tasks() -> list:
     d = CFG["tasks"]
     if not os.path.isdir(d):
         return []
+    gmap = task_tools.load_task_groups_map()
     out = []
     for name in sorted(os.listdir(d)):
         if not name.lower().endswith(".json"):
             continue
         try:
-            out.append(task_tools.task_summary(os.path.join(d, name)))
+            out.append(task_tools.task_summary(os.path.join(d, name), groups_map=gmap))
         except Exception as exc:  # noqa: BLE001
             out.append({"file": name, "path": os.path.join(d, name),
                         "error": f"{type(exc).__name__}: {exc}"[:140]})
@@ -1622,11 +1742,15 @@ class Handler(BaseHTTPRequestHandler):
             proj = (q.get("project") or [""])[0]
             folder = (q.get("folder") or [""])[0]
             if proj:
+                tasks = list_tasks_for(proj, folder)
                 return self._json({"ok": True, "project": proj, "folder": folder,
-                                   "tasks": list_tasks_for(proj, folder),
+                                   "tasks": tasks,
+                                   "groups": _group_tasks_summary(tasks),
                                    "split_count": CFG["split_count"],
                                    "strides": CFG["strides"]})
-            return self._json({"ok": True, "dir": CFG["tasks"], "tasks": list_tasks(),
+            tasks = list_tasks()
+            return self._json({"ok": True, "dir": CFG["tasks"], "tasks": tasks,
+                               "groups": _group_tasks_summary(tasks),
                                "split_count": CFG["split_count"], "strides": CFG["strides"]})
         if path == "/api/projects":
             return self._json({"ok": True, "root": CFG["projects_root"],
@@ -1889,6 +2013,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/task":
             name = body.get("name", "")
             p = task_path(name)
+            if act == "set_group":
+                summary = task_tools.set_task_group(p, str(body.get("group") or ""))
+                return self._json({"ok": True, "path": p, "group": summary["group"],
+                                   "group_label": summary["group_label"],
+                                   "summary": summary})
             if act == "validate":
                 return self._json({"ok": True, **task_tools.validate_task(
                     p, split_count=CFG["split_count"], strides_m=CFG["strides"])})
@@ -1901,6 +2030,10 @@ class Handler(BaseHTTPRequestHandler):
                     return self._err(f"已存在: {new_name}")
                 import shutil as _sh
                 _sh.copy2(p, dst)
+                gmap = task_tools.load_task_groups_map()
+                if os.path.basename(p) in gmap:
+                    gmap[os.path.basename(dst)] = gmap[os.path.basename(p)]
+                    task_tools.save_task_groups_map(gmap)
                 return self._json({"ok": True, "path": dst,
                                    "summary": task_tools.task_summary(dst)})
             if act == "rename":
@@ -1909,9 +2042,17 @@ class Handler(BaseHTTPRequestHandler):
                 if os.path.exists(dst):
                     return self._err(f"已存在: {new_name}")
                 os.rename(p, dst)
+                gmap = task_tools.load_task_groups_map()
+                if os.path.basename(p) in gmap:
+                    gmap[os.path.basename(dst)] = gmap.pop(os.path.basename(p))
+                    task_tools.save_task_groups_map(gmap)
                 return self._json({"ok": True, "path": dst})
             if act == "delete":
                 os.remove(p)
+                gmap = task_tools.load_task_groups_map()
+                if os.path.basename(p) in gmap:
+                    gmap.pop(os.path.basename(p), None)
+                    task_tools.save_task_groups_map(gmap)
                 return self._json({"ok": True, "removed": p})
             if act == "generate":
                 # 由源表派生新表：配速缩放 + 坐标漂移 + 里程重算

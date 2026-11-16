@@ -1269,7 +1269,7 @@ img.zoom {
       </header>
       <table>
         <thead><tr>
-          <th>文件</th><th style="width:120px">里程 / 时长</th><th style="width:110px">配速 / 步频</th>
+          <th>文件</th><th style="width:72px">组别</th><th style="width:120px">里程 / 时长</th><th style="width:110px">配速 / 步频</th>
           <th style="width:80px">点数</th><th style="width:70px">围栏</th>
           <th style="width:150px">自洽校验</th><th style="width:330px">操作</th>
         </tr></thead>
@@ -1298,6 +1298,11 @@ img.zoom {
                 漂移是全表同向微移；里程会按新坐标重算以保持表内自洽。
               </div>
               <div class="kv" style="grid-template-columns:auto 1fr">
+                <b>组别归属</b>
+                <select id="taskDlgGroup" onchange="changeCurrentTaskGroup(this.value)">
+                  <option value="male">男组</option>
+                  <option value="female">女组</option>
+                </select>
                 <b>新文件名</b><input id="genName" placeholder="tasklist_new.json">
                 <b>目标配速</b><input id="genPace" type="number" step="0.01" placeholder="如 6.50（更慢）">
                 <b>漂移(度)</b><input id="genDrift" type="number" step="0.0000001" placeholder="留空=随机 ±1e-9">
@@ -1386,11 +1391,12 @@ img.zoom {
           <b>名称（可选）</b><input id="schName" placeholder="默认用学号，如：晨跑 / 夜跑">
           <b>模式</b><select id="schMode"><option value="dry">离线演练</option><option value="real">真实运行</option></select>
           <b>任务目录</b><select id="schFolder" onchange="fillScheduleTasks()"></select>
-          <b>任务表</b><select id="schTask"></select>
+          <b>任务组别</b><select id="schTask"></select>
           <b>人脸照片</b><select id="schPhoto" onchange="renderScheduleDetectOptions()"></select>
           <b>人脸 JSON</b><select id="schDetect"></select>
         </div>
-        <div id="schStudentHint" class="hint" style="margin-top:6px"></div>
+        <div class="hint" style="margin-top:6px">💡 定时运行任务表按组别配置：每次触发执行时，系统自动在所选组别（男组/女组）中随机抽取一张表运行。</div>
+        <div id="schStudentHint" class="hint" style="margin-top:4px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
           <button class="primary" id="schSave" onclick="saveSchedule()">保存定时任务</button>
           <button id="schCancel" hidden onclick="cancelScheduleEdit()">取消修改</button>
