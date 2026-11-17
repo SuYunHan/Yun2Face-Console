@@ -626,16 +626,26 @@ def list_schedules() -> List[Dict[str, Any]]:
         return out
 
 
-def _validate_time_of_day(value, default: str = "07:30") -> str:
-    """校验每天运行时间，返回规范化的 HH:MM（非法值抛 ValueError）。"""
+def _validate_time_of_day(value, default: str = "07:00-08:00") -> str:
+    """校验每天运行时间或运行时间范围，返回规范化的字符串（HH:MM 或 HH:MM-HH:MM）。"""
     raw = str(value or default).strip()
-    match = re.fullmatch(r"(\d{1,2}):(\d{2})", raw)
-    if not match:
-        raise ValueError(f"每天运行时间格式应为 HH:MM，收到: {raw!r}")
-    hour, minute = int(match.group(1)), int(match.group(2))
-    if hour > 23 or minute > 59:
-        raise ValueError(f"每天运行时间超出范围: {raw!r}")
-    return f"{hour:02d}:{minute:02d}"
+    # 1. 尝试匹配时间范围格式：HH:MM-HH:MM 或 HH:MM~HH:MM
+    m_range = re.fullmatch(r"(\d{1,2}):(\d{1,2})\s*[-~至到]\s*(\d{1,2}):(\d{1,2})", raw)
+    if m_range:
+        sh, sm, eh, em = [int(x) for x in m_range.groups()]
+        if not (0 <= sh <= 23 and 0 <= sm <= 59 and 0 <= eh <= 23 and 0 <= em <= 59):
+            raise ValueError(f"每天运行时间范围数值超出范围: {raw!r}")
+        return f"{sh:02d}:{sm:02d}-{eh:02d}:{em:02d}"
+
+    # 2. 尝试匹配单点时间格式：HH:MM
+    m_single = re.fullmatch(r"(\d{1,2}):(\d{1,2})", raw)
+    if m_single:
+        hour, minute = int(m_single.group(1)), int(m_single.group(2))
+        if hour > 23 or minute > 59:
+            raise ValueError(f"每天运行时间超出范围: {raw!r}")
+        return f"{hour:02d}:{minute:02d}"
+
+    raise ValueError(f"每天运行时间格式应为 HH:MM 或 HH:MM-HH:MM，收到: {raw!r}")
 
 
 def _clean_schedule_options(raw) -> Dict[str, Any]:
@@ -834,38 +844,90 @@ def _schedule_loop() -> None:
         time.sleep(10)
 
 
+def _parse_time_range(value: str, default: tuple = (7, 0, 8, 0)) -> tuple:
+    """解析运行时间范围，返回 (sh, sm, eh, em)；单点时间返回 (h, m, h, m)。"""
+    try:
+        raw = str(value or "").strip()
+        m_range = re.fullmatch(r"(\d{1,2}):(\d{1,2})\s*[-~至到]\s*(\d{1,2}):(\d{1,2})", raw)
+        if m_range:
+            sh, sm, eh, em = [int(x) for x in m_range.groups()]
+            if 0 <= sh <= 23 and 0 <= sm <= 59 and 0 <= eh <= 23 and 0 <= em <= 59:
+                return sh, sm, eh, em
+        m_single = re.fullmatch(r"(\d{1,2}):(\d{1,2})", raw)
+        if m_single:
+            h, m = [int(x) for x in m_single.groups()]
+            if 0 <= h <= 23 and 0 <= m <= 59:
+                return h, m, h, m
+    except Exception:
+        pass
+    return default
+
+
 def _parse_time_of_day(value, default=(7, 30)) -> tuple:
     """HH:MM → (hour, minute)，非法值回退到默认（不抛异常，供调度/迁移使用）。"""
     try:
-        hh, mm = [int(x) for x in str(value).split(":", 1)]
-        if 0 <= hh <= 23 and 0 <= mm <= 59:
-            return hh, mm
+        sh, sm, _, _ = _parse_time_range(str(value or ""), (default[0], default[1], default[0], default[1]))
+        return sh, sm
     except Exception:  # noqa: BLE001
         pass
     return default
 
 
-def _next_daily(value: str, now: float | None = None) -> float:
-    """计算下一个 **定时时区（默认北京时间 UTC+8）** 的 HH:MM 运行点。
+def _next_daily(value: str, now: float | None = None, rng=None) -> float:
+    """计算下一个 **定时时区（默认北京时间 UTC+8）** 的运行时间点。
 
-    这里刻意不用 `datetime.fromtimestamp()` 的服务器本地时区：容器/云服务器常为
-    UTC，会让 07:10 实际变成北京时间 15:10。改为显式绑定时区，服务器时区不再影响。
+    - 单点时间（HH:MM）：精确调度到下一个该点（保持完全确定性）；
+    - 范围时间（HH:MM-HH:MM）：在每天的时间范围内随机挑选时刻触发，模拟真实作息。
     """
     now_ts = time.time() if now is None else now
-    hh, mm = _parse_time_of_day(value)
+    sh, sm, eh, em = _parse_time_range(value)
     now_dt = datetime.fromtimestamp(now_ts, SCHEDULE_TZ)
-    target = now_dt.replace(hour=hh, minute=mm, second=0, microsecond=0)
-    if target.timestamp() <= now_ts:
-        target += timedelta(days=1)
-    return target.timestamp()
+
+    # 1. 单点时间行为保持完全确定（兼容既有单点测试）
+    if (sh, sm) == (eh, em):
+        target = now_dt.replace(hour=sh, minute=sm, second=0, microsecond=0)
+        if target.timestamp() <= now_ts:
+            target += timedelta(days=1)
+        return target.timestamp()
+
+    # 2. 范围时间：在时间范围内随机选点
+    chooser = rng if rng is not None else random
+
+    def _window_for_date(base_date: datetime) -> tuple[datetime, datetime]:
+        w_start = base_date.replace(hour=sh, minute=sm, second=0, microsecond=0)
+        if eh > sh or (eh == sh and em >= sm):
+            w_end = base_date.replace(hour=eh, minute=em, second=0, microsecond=0)
+        else:
+            w_end = (base_date + timedelta(days=1)).replace(hour=eh, minute=em, second=0, microsecond=0)
+        return w_start, w_end
+
+    def _random_point(w_start: datetime, w_end: datetime, min_start: datetime | None = None) -> datetime:
+        start_point = max(w_start, min_start) if min_start else w_start
+        total_sec = int((w_end - start_point).total_seconds())
+        if total_sec <= 0:
+            return w_end
+        offset = chooser.randint(0, total_sec)
+        return start_point + timedelta(seconds=offset)
+
+    # 检查今天的时间窗口
+    t_start, t_end = _window_for_date(now_dt)
+    if now_dt < t_start:
+        # 今天窗口还没到，整窗随机挑选
+        return _random_point(t_start, t_end).timestamp()
+    elif now_dt < t_end:
+        # 当前处于今天窗口中，在剩余时间中挑选（留至少 5 秒缓冲）
+        remain_sec = int((t_end - now_dt).total_seconds())
+        if remain_sec >= 10:
+            offset = chooser.randint(5, remain_sec)
+            return (now_dt + timedelta(seconds=offset)).timestamp()
+
+    # 今天窗口已过，调度到明天窗口内随机时刻
+    m_start, m_end = _window_for_date(now_dt + timedelta(days=1))
+    return _random_point(m_start, m_end).timestamp()
 
 
 def _schedule_next_run_matches(item: Dict[str, Any]) -> bool:
-    """next_run 落在定时时区后，小时/分钟是否等于设定时间。
-
-    服务器时区变化（或历史版本用本地时区计算）会让 07:10 变成北京时间 15:10，
-    此时小时/分钟不匹配，启动时需要按定时时区重排。
-    """
+    """next_run 落在定时时区后，是否属于设定时间（单点时相等，范围时落在范围内）。"""
     try:
         next_run = float(item.get("next_run") or 0)
     except (TypeError, ValueError):
@@ -873,7 +935,16 @@ def _schedule_next_run_matches(item: Dict[str, Any]) -> bool:
     if next_run <= 0:
         return False
     local = datetime.fromtimestamp(next_run, SCHEDULE_TZ)
-    return (local.hour, local.minute) == _parse_time_of_day(item.get("time_of_day", "07:30"))
+    sh, sm, eh, em = _parse_time_range(item.get("time_of_day", "07:30"))
+    if (sh, sm) == (eh, em):
+        return (local.hour, local.minute) == (sh, sm)
+    # 范围时间：判断 local 对应时间点是否在时间窗内
+    local_mins = local.hour * 60 + local.minute
+    start_mins = sh * 60 + sm
+    end_mins = eh * 60 + em
+    if start_mins <= end_mins:
+        return start_mins <= local_mins <= end_mins
+    return local_mins >= start_mins or local_mins <= end_mins
 
 
 # ---------------------------------------------------------------- 登录（真实运行的前置）

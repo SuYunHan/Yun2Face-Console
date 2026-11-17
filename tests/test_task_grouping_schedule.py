@@ -181,3 +181,59 @@ def test_ui_contains_grouping_and_male_female_options():
     assert '<option value="male">男组</option>' in js
     assert '<option value="female">女组</option>' in js
     assert "setTaskGroup" in js
+
+    # index.html 与 app.js 支持运行时间范围
+    assert "schTimeStart" in html
+    assert "schTimeEnd" in html
+    assert "schTimeStart" in js
+    assert "schTimeEnd" in js
+
+
+def test_time_range_validation_and_scheduling(schedule_store):
+    """测试运行时间范围格式校验、随机时刻调度与兼容性。"""
+    from datetime import datetime, timezone, timedelta
+    tz8 = timezone(timedelta(hours=8))
+
+    # 1. 格式校验
+    assert web_app._validate_time_of_day("07:00-08:00") == "07:00-08:00"
+    assert web_app._validate_time_of_day("7:30~8:45") == "07:30-08:45"
+    assert web_app._validate_time_of_day("07:30") == "07:30"
+    with pytest.raises(ValueError):
+        web_app._validate_time_of_day("25:00-08:00")
+    with pytest.raises(ValueError):
+        web_app._validate_time_of_day("07:00-24:00")
+
+    # 2. 时间范围内随机挑选调度点
+    # 设定基准时间为北京时间某天清晨 06:00（时间窗 07:00-08:00 尚未开始）
+    base_ts = datetime(2026, 11, 18, 6, 0, 0, tzinfo=tz8).timestamp()
+    picked_times = set()
+    for _ in range(30):
+        next_ts = web_app._next_daily("07:00-08:00", now=base_ts)
+        local_dt = datetime.fromtimestamp(next_ts, tz8)
+        assert local_dt.year == 2026
+        assert local_dt.month == 11
+        assert local_dt.day == 18
+        # 时间必须在 07:00 到 08:00 之间
+        assert 7 <= local_dt.hour <= 8
+        if local_dt.hour == 8:
+            assert local_dt.minute == 0
+        picked_times.add(local_dt.strftime("%H:%M:%S"))
+
+    # 30 次抽取应该产生多个不同的随机时刻（非固定死时间）
+    assert len(picked_times) > 1
+
+    # 3. 时间窗口已过去时，调度至明天窗口内的随机时刻
+    past_ts = datetime(2026, 11, 18, 8, 30, 0, tzinfo=tz8).timestamp()
+    next_tomorrow = web_app._next_daily("07:00-08:00", now=past_ts)
+    tom_dt = datetime.fromtimestamp(next_tomorrow, tz8)
+    assert tom_dt.day == 19
+    assert 7 <= tom_dt.hour <= 8
+
+    # 4. 创建带有时间范围的定时任务
+    item = web_app.create_schedule({
+        "name": "范围测试",
+        "time_of_day": "07:00-08:00",
+        "options": {"mode": "dry", "task_file": "male"},
+    })
+    assert item["time_of_day"] == "07:00-08:00"
+    assert web_app._schedule_next_run_matches(item) is True

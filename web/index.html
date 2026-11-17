@@ -1388,7 +1388,12 @@ img.zoom {
         <div id="schEditHint" class="hint" style="margin:-4px 0 8px"></div>
         <div class="kv" style="grid-template-columns:100px 1fr 100px 1fr">
           <b>学号</b><span id="schStudent" class="mono">请选择左侧学号</span>
-          <b>每天运行时间</b><input id="schTime" type="time" value="07:30">
+          <b>运行时间范围</b>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input id="schTimeStart" type="time" value="07:00" style="flex:1">
+            <span style="color:var(--text-muted);font-weight:600">至</span>
+            <input id="schTimeEnd" type="time" value="08:00" style="flex:1">
+          </div>
           <b>名称（可选）</b><input id="schName" placeholder="默认用学号，如：晨跑 / 夜跑">
           <b>模式</b><select id="schMode"><option value="dry">离线演练</option><option value="real">真实运行</option></select>
           <b>任务目录</b><select id="schFolder" onchange="fillScheduleTasks()"></select>
@@ -1396,7 +1401,7 @@ img.zoom {
           <b>人脸照片</b><select id="schPhoto" onchange="renderScheduleDetectOptions()"></select>
           <b>人脸 JSON</b><select id="schDetect"></select>
         </div>
-        <div class="hint" style="margin-top:6px">💡 定时运行任务表按组别配置：每次触发执行时，系统自动在所选组别（男组/女组）中随机抽取一张表运行。</div>
+        <div class="hint" style="margin-top:6px">💡 定时运行时间为随机时间范围：每天将在设定范围（如 07:00 ~ 08:00）内随机挑选时刻触发，模拟真人自然作息；任务表从所选组别中每次随机抽表。</div>
         <div id="schStudentHint" class="hint" style="margin-top:4px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
           <button class="primary" id="schSave" onclick="saveSchedule()">保存定时任务</button>

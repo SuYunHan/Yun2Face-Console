@@ -843,10 +843,11 @@ function renderScheduleList() {
     else if (grp === 'male') grpLabel = '男组（每次随机抽表）';
     else grpLabel = o.task_file || '随机';
     const lastPick = s.last_task_file ? ` · 最近运行：${s.last_task_file}` : '';
+    const timeLabel = s.time_of_day ? (s.time_of_day.includes('-') ? `每天 ${s.time_of_day.replace('-', ' ~ ')}（随机范围）` : `每天 ${s.time_of_day}`) : '每天 07:00 ~ 08:00（随机范围）';
     return `<div class="runitem ${s.id === SCH.editing ? 'active' : ''}">
       <span class="st ${s.enabled ? 'st-running' : 'st-stopped'}">${s.enabled ? '启用' : '停用'}</span>
       <div style="flex:1"><div><b>${stu}</b>${label}</div>
-        <div class="meta">每天 ${s.time_of_day || '07:30'} · 下次 ${next} · 上次 ${last}${skipped}</div>
+        <div class="meta">${timeLabel} · 下次 ${next} · 上次 ${last}${skipped}</div>
         <div class="meta">${o.mode === 'dry' ? '离线演练' : '真实运行'} · ${o.task_folder || '?'}/${grpLabel}${lastPick}${o.face_photo ? ' · 人脸 ' + o.face_photo : ''}</div>
         ${s.last_error ? `<div class="detail" style="color:#ff8a8a">${s.last_error}</div>` : ''}</div>
       <button onclick="editSchedule('${s.id}')">修改</button>
@@ -868,7 +869,18 @@ function updateScheduleFormMode() {
 async function applyScheduleForm(item) {
   const o = item.options || {};
   $('schName').value = (item.name && item.name !== (o.student || '')) ? item.name : '';
-  $('schTime').value = item.time_of_day || '07:30';
+  const tod = String(item.time_of_day || '07:00-08:00').trim();
+  const parts = tod.split(/[-~至到]/).map(x => x.trim());
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    $('schTimeStart').value = parts[0];
+    $('schTimeEnd').value = parts[1];
+  } else if (parts.length === 1 && parts[0]) {
+    $('schTimeStart').value = parts[0];
+    $('schTimeEnd').value = parts[0];
+  } else {
+    $('schTimeStart').value = '07:00';
+    $('schTimeEnd').value = '08:00';
+  }
   $('schMode').value = o.mode === 'real' ? 'real' : 'dry';
   await fillScheduleFolders();
   if (o.task_folder && [...$('schFolder').options].some(x => x.value === o.task_folder)) {
@@ -946,7 +958,13 @@ async function saveSchedule() {
     face_student: photo ? S.student : null, face_photo: photo ? photo.name : null,
     face_stem: photo ? photo.stem : null };
   const name = ($('schName').value || '').trim() || (p.student || S.student);
-  const time_of_day = $('schTime').value || '07:30';
+  const tStart = ($('schTimeStart').value || '').trim();
+  const tEnd = ($('schTimeEnd').value || '').trim();
+  if (!tStart || !tEnd) {
+    alert('请设置每天运行时间范围的起始时间与结束时间');
+    return;
+  }
+  const time_of_day = (tStart === tEnd) ? tStart : `${tStart}-${tEnd}`;
   try {
     if (SCH.editing) {
       await api('/api/schedules', { action: 'update', id: SCH.editing,
