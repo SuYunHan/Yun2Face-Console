@@ -375,7 +375,7 @@ def _prepare_task_dir(proj: str, folder: str, want: str, run_id: str, group: str
         return tdir, note, None
     if want not in names:
         raise ValueError(f"该目录里没有 {want}（现有: {names}）")
-    if len(names) == 1:
+    if len(names) == 1 and not norm_group:
         return tdir, group_note, None
 
     import shutil
@@ -385,7 +385,24 @@ def _prepare_task_dir(proj: str, folder: str, want: str, run_id: str, group: str
         os.remove(os.path.join(pick_dir, old))
     src = os.path.join(tdir, want)
     dst = os.path.join(pick_dir, want)
-    shutil.copyfile(src, dst)
+
+    effective_group = norm_group or _task_file_group(src)
+    if effective_group in ("male", "female"):
+        try:
+            r = task_tools.randomize_task(src, dst, group=effective_group)
+            d = r.get("data", {})
+            m = d.get("recordMileage")
+            p = d.get("recodePace")
+            c = d.get("recodeCadence")
+            grp_name = task_tools.task_group_label(effective_group)
+            prefix = group_note + "；" if group_note else f"已选定{grp_name}任务表 {want}；"
+            lock_note = f"{prefix}随机化后指标（里程 {m}km，配速 {p}min/km，平均步频 {c}步/min）"
+            return pick_dir, lock_note, pick_dir
+        except Exception:
+            shutil.copyfile(src, dst)
+    else:
+        shutil.copyfile(src, dst)
+
     if os.path.getsize(src) != os.path.getsize(dst):
         _cleanup_task_pick(pick_dir)
         raise ValueError(f"任务表复制校验失败: {src} → {dst}")
@@ -2204,6 +2221,31 @@ class Handler(BaseHTTPRequestHandler):
                 r["validation"] = task_tools.validate_task(
                     dst, split_count=CFG["split_count"], strides_m=CFG["strides"])
                 return self._json(r)
+            if act == "randomize":
+                # 按男女组刚性约束随机化任务表
+                new_name = body.get("new_name") or ""
+                if not new_name:
+                    return self._err("需要 new_name（新任务表文件名）")
+                if not str(new_name).lower().endswith(".json"):
+                    new_name = str(new_name) + ".json"
+                dst = task_path(str(new_name))
+                if os.path.exists(dst) and not body.get("overwrite"):
+                    return self._err(f"已存在: {new_name}（勾选覆盖或改名）")
+                try:
+                    out = task_tools.randomize_task(
+                        p, dst, group=body.get("group", ""),
+                        seed=body.get("seed"),
+                        target_pace=body.get("target_pace"),
+                        target_cadence=body.get("target_cadence"),
+                        target_distance=body.get("target_distance"),
+                        drift_deg=body.get("drift_deg"))
+                except Exception as exc:
+                    return self._err(str(exc))
+                return self._json({
+                    "ok": True, "path": dst,
+                    "summary": task_tools.task_summary(dst),
+                    "validation": task_tools.validate_task(dst, split_count=CFG["split_count"], strides_m=CFG["strides"])
+                })
             if act == "upload":
                 data_url = body.get("data", "")
                 if "," in data_url and data_url.strip().startswith("data:"):

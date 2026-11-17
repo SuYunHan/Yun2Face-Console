@@ -871,8 +871,8 @@ function renderScheduleList() {
     const label = s.name && s.name !== stu ? ` <span class="hint">${s.name}</span>` : '';
     const grp = o.task_group || (o.task_file === 'female' ? 'female' : (o.task_file === 'male' ? 'male' : ''));
     let grpLabel = '';
-    if (grp === 'female') grpLabel = '女组（每次随机抽表）';
-    else if (grp === 'male') grpLabel = '男组（每次随机抽表）';
+    if (grp === 'female') grpLabel = '女组（1.2~1.6km · 动态随机化）';
+    else if (grp === 'male') grpLabel = '男组（>1.6km · 动态随机化）';
     else grpLabel = o.task_file || '随机';
     const lastPick = s.last_task_file ? ` · 最近运行：${s.last_task_file}` : '';
     const dayLabel = formatDaysOfWeek(s.days_of_week);
@@ -967,8 +967,8 @@ async function fillScheduleTasks() {
   const p = scheduleProject(), folder = $('schFolder').value;
   if (!p || !folder) { $('schTask').innerHTML = ''; return; }
   $('schTask').innerHTML = `
-    <option value="male">男组</option>
-    <option value="female">女组</option>
+    <option value="male">男组（>1.6km · 步频60~280 · 配速3~13 · 随机化）</option>
+    <option value="female">女组（1.2~1.6km · 步频60~280 · 配速3~13 · 随机化）</option>
   `;
 }
 function renderScheduleDetectOptions() {

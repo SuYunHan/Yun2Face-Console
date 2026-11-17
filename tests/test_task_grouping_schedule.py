@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """任务表手动分组（男组/女组/未分组）与定时运行男组/女组选择及组内随机抽表回归测试。"""
 import json
+import os
 import shutil
 import uuid
 from pathlib import Path
@@ -178,8 +179,8 @@ def test_ui_contains_grouping_and_male_female_options():
     assert "schTask" in html
 
     # app.js 中 fillScheduleTasks 提供清晰的男组与女组两个选项
-    assert '<option value="male">男组</option>' in js
-    assert '<option value="female">女组</option>' in js
+    assert '<option value="male">男组' in js
+    assert '<option value="female">女组' in js
     assert "setTaskGroup" in js
 
     # index.html 与 app.js 支持运行时间范围与每周运行日
@@ -312,3 +313,105 @@ def test_days_of_week_normalization_and_scheduling(schedule_store):
     local_sun = datetime.fromtimestamp(updated["next_run"], tz8)
     assert local_sun.isoweekday() == 7
     assert web_app._schedule_next_run_matches(updated) is True
+
+
+def test_task_randomization_and_group_constraints(tmp_path, schedule_store):
+    """测试男组与女组任务表随机化后的指标刚性约束：
+    1. 男组：平均步频 60~280 步/min，配速 3~13 min/km，距离 > 1.6km；
+    2. 女组：平均步频 60~280 步/min，配速 3~13 min/km，距离 > 1.2km 且 < 1.6km。
+    """
+    # 1. 针对男组与女组原表多次随机化校验
+    t0_path = str(TASKS_FCH / "tasklist_0.json")
+    t8_path = str(TASKS_FCH / "tasklist_8.json")
+
+    # 男组随机化测试（50 次随机）
+    for seed in range(50):
+        out_male = task_tools.randomize_task(
+            t0_path, str(tmp_path / f"male_{seed}.json"), group="male", seed=seed * 31 + 7
+        )
+        data = out_male["data"]
+        dist = data["recordMileage"]
+        pace = data["recodePace"]
+        cadence = data["recodeCadence"]
+
+        assert dist > 1.6, f"男组距离必须 > 1.6km，当前: {dist}"
+        assert 3.0 <= pace <= 13.0, f"男组配速必须在 3~13 之间，当前: {pace}"
+        assert 60 <= cadence <= 280, f"男组步频必须在 60~280 之间，当前: {cadence}"
+
+        val = task_tools.validate_task(str(tmp_path / f"male_{seed}.json"), group="male")
+        assert val["ok"] is True, f"校验失败: {val['errors']}"
+
+    # 女组随机化测试（50 次随机）
+    for seed in range(50):
+        out_female = task_tools.randomize_task(
+            t8_path, str(tmp_path / f"female_{seed}.json"), group="female", seed=seed * 43 + 13
+        )
+        data = out_female["data"]
+        dist = data["recordMileage"]
+        pace = data["recodePace"]
+        cadence = data["recodeCadence"]
+
+        assert 1.2 < dist < 1.6, f"女组距离必须在 1.2~1.6km 之间，当前: {dist}"
+        assert 3.0 <= pace <= 13.0, f"女组配速必须在 3~13 之间，当前: {pace}"
+        assert 60 <= cadence <= 280, f"女组步频必须在 60~280 之间，当前: {cadence}"
+
+        val = task_tools.validate_task(str(tmp_path / f"female_{seed}.json"), group="female")
+        assert val["ok"] is True, f"校验失败: {val['errors']}"
+
+    # 2. validate_task 针对不合规指标的阻断拦截校验
+    fake_bad = {
+        "ok": True, "data": {
+            "recordMileage": 1.5,   # 男组应 > 1.6
+            "recodePace": 2.5,      # 配速 < 3
+            "recodeCadence": 50,    # 步频 < 60
+            "duration": 500,
+            "manageList": [{"point": "1,1", "index": 0}],
+            "pointsList": [
+                {"point": "1,1", "runMileage": "0", "runTime": "0", "runStep": "0", "speed": 6.0},
+                {"point": "1,2", "runMileage": "1500", "runTime": "500", "runStep": "416", "speed": 6.0},
+            ]
+        }
+    }
+    bad_p = str(tmp_path / "bad.json")
+    with open(bad_p, "w", encoding="utf-8") as f:
+        json.dump(fake_bad, f)
+
+    v_bad_male = task_tools.validate_task(bad_p, group="male")
+    assert v_bad_male["ok"] is False
+    assert any("距离必须 > 1.6km" in e for e in v_bad_male["errors"])
+    assert any("平均步频" in e for e in v_bad_male["errors"])
+    assert any("配速" in e for e in v_bad_male["errors"])
+
+    # 3. 运行前准备 _prepare_task_dir 在男/女组下的随机化与隔离验证
+    dir_m, note_m, pick_m = web_app._prepare_task_dir(str(ROOT), "tasks_fch", "male", "rTESTMALE")
+    try:
+        assert pick_m == dir_m
+        assert "已选定男组任务表" in note_m or "已从男组随机抽取" in note_m
+        assert "随机化后指标" in note_m
+        # 读取临时目录中实际跑的任务表
+        copied_files = [f for f in os.listdir(pick_m) if f.endswith(".json")]
+        assert len(copied_files) == 1
+        with open(os.path.join(pick_m, copied_files[0]), "r", encoding="utf-8") as f:
+            picked_obj = json.load(f)
+        d_m = picked_obj["data"]
+        assert d_m["recordMileage"] > 1.6
+        assert 3.0 <= d_m["recodePace"] <= 13.0
+        assert 60 <= d_m["recodeCadence"] <= 280
+    finally:
+        web_app._cleanup_task_pick(pick_m)
+
+    dir_f, note_f, pick_f = web_app._prepare_task_dir(str(ROOT), "tasks_fch", "female", "rTESTFEMALE")
+    try:
+        assert pick_f == dir_f
+        assert "已选定女组任务表" in note_f or "已从女组随机抽取" in note_f
+        assert "随机化后指标" in note_f
+        copied_files_f = [f for f in os.listdir(pick_f) if f.endswith(".json")]
+        assert len(copied_files_f) == 1
+        with open(os.path.join(pick_f, copied_files_f[0]), "r", encoding="utf-8") as f:
+            picked_obj_f = json.load(f)
+        d_f = picked_obj_f["data"]
+        assert 1.2 < d_f["recordMileage"] < 1.6
+        assert 3.0 <= d_f["recodePace"] <= 13.0
+        assert 60 <= d_f["recodeCadence"] <= 280
+    finally:
+        web_app._cleanup_task_pick(pick_f)

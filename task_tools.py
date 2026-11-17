@@ -47,6 +47,15 @@ TASK_GROUPS: Dict[str, str] = {
 }
 FEMALE_MILEAGE_MAX_KM = 1.5
 
+# 跑步任务指标刚性约束
+CADENCE_MIN = 60.0
+CADENCE_MAX = 280.0
+PACE_MIN = 3.0
+PACE_MAX = 13.0
+MALE_DISTANCE_MIN = 1.6
+FEMALE_DISTANCE_MIN = 1.2
+FEMALE_DISTANCE_MAX = 1.6
+
 
 def normalize_task_group(value: Any, default: str = "") -> str:
     """将组别标识规范化为 'male'（男组）或 'female'（女组）。"""
@@ -269,7 +278,8 @@ def curves(path: str, max_points: int = 400) -> Dict[str, Any]:
 
 # ---------------------------------------------------------------- 校验
 def validate_task(path: str, split_count: int = 10, strides_m: float = 0.8,
-                  speed_range: Tuple[float, float] = (3.0, 12.0)) -> Dict[str, Any]:
+                  speed_range: Tuple[float, float] = (3.0, 12.0),
+                  group: Optional[str] = None) -> Dict[str, Any]:
     """按项目实际消费方式做一致性校验。返回 {ok, errors[], warnings[], stats}。
 
     只报错、不改数据：任何一项 error 都会让项目在派生汇总时失败或产生矛盾数据。
@@ -430,6 +440,37 @@ def validate_task(path: str, split_count: int = 10, strides_m: float = 0.8,
             if str(data.get("isMorning", "")).upper() not in ("R0",):
                 pass  # isMorning 与打卡无关，不判
 
+    # --- 组别规则校验（男组 >1.6km，女组 1.2~1.6km，步频 60~280 步/min，配速 3~13 min/km）---
+    norm_grp = normalize_task_group(group or data.get("group"))
+    if norm_grp:
+        stats["group"] = norm_grp
+        stats["group_label"] = task_group_label(norm_grp)
+        # 1. 步频检查
+        try:
+            cad_val = float(data.get("recodeCadence") or 0.0)
+            if not (CADENCE_MIN <= cad_val <= CADENCE_MAX):
+                errors.append(f"任务表平均步频 {cad_val:g} 步/min 必须在 {CADENCE_MIN:.0f}~{CADENCE_MAX:.0f} 步/min 之间")
+        except (TypeError, ValueError):
+            pass
+        # 2. 配速检查
+        try:
+            pace_val = float(data.get("recodePace") or 0.0)
+            if not (PACE_MIN <= pace_val <= PACE_MAX):
+                errors.append(f"任务表配速 {pace_val:g} min/km 必须在 {PACE_MIN:.0f}~{PACE_MAX:.0f} min/km 之间")
+        except (TypeError, ValueError):
+            pass
+        # 3. 距离检查
+        try:
+            dist_val = float(data.get("recordMileage") or 0.0)
+            if norm_grp == "male":
+                if dist_val <= MALE_DISTANCE_MIN:
+                    errors.append(f"男组任务表距离必须 > {MALE_DISTANCE_MIN:.1f}km（当前为 {dist_val:.2f}km）")
+            elif norm_grp == "female":
+                if not (FEMALE_DISTANCE_MIN < dist_val < FEMALE_DISTANCE_MAX):
+                    errors.append(f"女组任务表距离必须在 {FEMALE_DISTANCE_MIN:.1f}km 至 {FEMALE_DISTANCE_MAX:.1f}km 之间（当前为 {dist_val:.2f}km）")
+        except (TypeError, ValueError):
+            pass
+
     return {"ok": not errors, "errors": errors, "warnings": warnings, "stats": stats}
 
 
@@ -510,3 +551,211 @@ def generate_variant(src: str, dst: str, seed: Optional[int] = None,
         json.dump(out, fh, ensure_ascii=False, indent=2)
     return {"ok": True, "path": dst, "notes": notes, "stats": stats,
             "summary": task_summary(dst)}
+
+
+# ---------------------------------------------------------------- 男女组指标刚性约束随机化
+def randomize_task_data(task_dict: Dict[str, Any], group: str = "",
+                        seed: Optional[int] = None,
+                        target_pace: Optional[float] = None,
+                        target_cadence: Optional[float] = None,
+                        target_distance: Optional[float] = None,
+                        drift_deg: Optional[float] = None) -> Dict[str, Any]:
+    """对任务表数据进行随机化处理，并严格确保男女组指标约束：
+    1. 男组：平均步频在 60 步/min 至 280 步/min 之间，配速在 3 min/km 至 13 min/km 之间，距离 > 1.6km；
+    2. 女组：平均步频在 60 步/min 至 280 步/min 之间，配速在 3 min/km 至 13 min/km 之间，距离 > 1.2km 且 < 1.6km；
+    并对坐标施加微漂移与每点微小抖动，同时保持时间、步数、里程与表头完全自洽。
+    """
+    out = copy.deepcopy(task_dict)
+    data = out.get("data", {})
+    pts = data.get("pointsList", [])
+    if not pts:
+        return out
+    rng = random.Random(seed)
+    norm_grp = normalize_task_group(group or data.get("group"))
+
+    # 1. 确定目标距离 D (km)
+    cur_dist = float(data.get("recordMileage") or 0.0)
+    try:
+        pts_last_m = float(pts[-1].get("runMileage", 0.0)) / 1000.0
+    except (TypeError, ValueError):
+        pts_last_m = 0.0
+    if cur_dist <= 0:
+        cur_dist = pts_last_m if pts_last_m > 0 else (1.70 if norm_grp == "male" else 1.35)
+
+    if target_distance is not None:
+        D = float(target_distance)
+    else:
+        if norm_grp == "male":
+            if cur_dist > MALE_DISTANCE_MIN:
+                D = max(MALE_DISTANCE_MIN + 0.01, round(cur_dist * rng.uniform(0.985, 1.015), 3))
+            else:
+                D = round(rng.uniform(1.65, 1.80), 3)
+        elif norm_grp == "female":
+            if FEMALE_DISTANCE_MIN < cur_dist < FEMALE_DISTANCE_MAX:
+                D = min(FEMALE_DISTANCE_MAX - 0.02, max(FEMALE_DISTANCE_MIN + 0.02, round(cur_dist * rng.uniform(0.99, 1.02), 3)))
+            else:
+                D = round(rng.uniform(1.25, 1.45), 3)
+        else:
+            D = max(0.1, round(cur_dist * rng.uniform(0.99, 1.01), 3))
+
+    # 刚性距离边界保障
+    if norm_grp == "male":
+        if D <= MALE_DISTANCE_MIN:
+            D = MALE_DISTANCE_MIN + 0.02
+    elif norm_grp == "female":
+        if D <= FEMALE_DISTANCE_MIN:
+            D = FEMALE_DISTANCE_MIN + 0.02
+        elif D >= FEMALE_DISTANCE_MAX:
+            D = FEMALE_DISTANCE_MAX - 0.02
+
+    # 2. 目标配速 P (min/km)
+    cur_pace = float(data.get("recodePace") or 0.0)
+    if target_pace is not None:
+        P = float(target_pace)
+    else:
+        if cur_pace > 0:
+            P = round(cur_pace * rng.uniform(0.94, 1.06), 2)
+        else:
+            P = round(rng.uniform(6.5, 9.5), 2)
+    P = max(PACE_MIN + 0.05, min(PACE_MAX - 0.05, round(P, 2)))
+
+    # 3. 目标步频 C (步/min)
+    cur_cadence = float(data.get("recodeCadence") or 0.0)
+    if target_cadence is not None:
+        C = float(target_cadence)
+    else:
+        if cur_cadence > 0:
+            C = round(cur_cadence * rng.uniform(0.95, 1.05), 1)
+        else:
+            C = round(rng.uniform(120.0, 160.0), 1)
+    C = max(CADENCE_MIN + 5.0, min(CADENCE_MAX - 5.0, round(C, 1)))
+
+    # 4. 计算并微调总时长与总步数
+    T = int(round(P * 60.0 * D))
+    P_actual = round((T / 60.0) / D, 2)
+    if P_actual < PACE_MIN:
+        T = int(math.ceil((PACE_MIN + 0.05) * 60.0 * D))
+        P_actual = round((T / 60.0) / D, 2)
+    elif P_actual > PACE_MAX:
+        T = int(math.floor((PACE_MAX - 0.05) * 60.0 * D))
+        P_actual = round((T / 60.0) / D, 2)
+
+    S_total = int(round(C * (T / 60.0)))
+    C_actual = int(round(S_total * 60.0 / T))
+    if C_actual < CADENCE_MIN:
+        S_total = int(math.ceil((CADENCE_MIN + 5.0) * T / 60.0))
+        C_actual = int(round(S_total * 60.0 / T))
+    elif C_actual > CADENCE_MAX:
+        S_total = int(math.floor((CADENCE_MAX - 5.0) * T / 60.0))
+        C_actual = int(round(S_total * 60.0 / T))
+
+    # 5. 坐标微漂移
+    if drift_deg is None:
+        drift_lon = rng.uniform(-0.00002, 0.00002)
+        drift_lat = rng.uniform(-0.00002, 0.00002)
+    else:
+        drift_lon = float(drift_deg) * rng.choice((-1, 1))
+        drift_lat = float(drift_deg) * rng.choice((-1, 1))
+
+    N = len(pts)
+    orig_m = []
+    for p in pts:
+        try:
+            orig_m.append(float(p.get("runMileage", 0.0)))
+        except (TypeError, ValueError):
+            orig_m.append(0.0)
+    if orig_m[-1] <= 0:
+        orig_m = [i * (D * 1000.0 / max(1, N - 1)) for i in range(N)]
+
+    orig_t = []
+    for p in pts:
+        try:
+            orig_t.append(float(p.get("runTime", 0.0)))
+        except (TypeError, ValueError):
+            orig_t.append(0.0)
+    if orig_t[-1] <= 0:
+        orig_t = [i * (T / max(1, N - 1)) for i in range(N)]
+
+    total_m = round(D * 1000.0, 1)
+    scale_m = total_m / orig_m[-1] if orig_m[-1] > 0 else 1.0
+    scale_t = T / orig_t[-1] if orig_t[-1] > 0 else 1.0
+
+    last_m_val = 0.0
+    last_t_val = 0
+    last_s_val = 0
+
+    for i in range(N):
+        p = pts[i]
+        lon, lat = parse_point(p["point"])
+        jx = rng.gauss(0, 1e-7)
+        jy = rng.gauss(0, 1e-7)
+        p["point"] = f"{lon + drift_lon + jx:.8f},{lat + drift_lat + jy:.8f}"
+
+        if i == 0:
+            m_val = 0.0
+            t_val = 0
+            s_val = 0
+        elif i == N - 1:
+            m_val = total_m
+            t_val = T
+            s_val = S_total
+        else:
+            m_val = round(orig_m[i] * scale_m, 1)
+            if m_val < last_m_val:
+                m_val = last_m_val
+            t_val = int(round(orig_t[i] * scale_t))
+            if t_val < last_t_val:
+                t_val = last_t_val
+            s_val = int(round((m_val / total_m) * S_total)) if total_m > 0 else 0
+            if s_val < last_s_val:
+                s_val = last_s_val
+
+        p["runMileage"] = str(m_val)
+        p["runTime"] = str(t_val)
+        p["runStep"] = str(s_val)
+
+        if i == 0:
+            p["speed"] = round(float(p.get("speed") or 6.0), 2)
+        else:
+            dm = m_val - last_m_val
+            dt = t_val - last_t_val
+            if dt > 0 and dm > 0:
+                v = round((dm / dt) * 3.6, 2)
+            else:
+                v = round(float(p.get("speed") or 6.0), 2)
+            p["speed"] = max(0.5, min(25.0, v))
+
+        last_m_val = m_val
+        last_t_val = t_val
+        last_s_val = s_val
+
+    data["recordMileage"] = round(D, 2)
+    data["duration"] = T
+    data["recodePace"] = P_actual
+    data["recodeCadence"] = C_actual
+    if norm_grp:
+        data["group"] = norm_grp
+
+    return out
+
+
+def randomize_task(src: str, dst: str, group: str = "",
+                   seed: Optional[int] = None,
+                   target_pace: Optional[float] = None,
+                   target_cadence: Optional[float] = None,
+                   target_distance: Optional[float] = None,
+                   drift_deg: Optional[float] = None) -> Dict[str, Any]:
+    """读取任务表文件，执行符合男女组约束的随机化，并写出到目标路径。"""
+    d = load_task(src)
+    norm_grp = normalize_task_group(group) or get_task_group(d, filename=os.path.basename(src))
+    out = randomize_task_data(d, group=norm_grp, seed=seed,
+                              target_pace=target_pace,
+                              target_cadence=target_cadence,
+                              target_distance=target_distance,
+                              drift_deg=drift_deg)
+    os.makedirs(os.path.dirname(os.path.abspath(dst)), exist_ok=True)
+    tmp = dst + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(out, fh, ensure_ascii=False, indent=2)
+    os.replace(tmp, dst)
+    return out
