@@ -919,20 +919,10 @@ async function fillScheduleFolders() {
 async function fillScheduleTasks() {
   const p = scheduleProject(), folder = $('schFolder').value;
   if (!p || !folder) { $('schTask').innerHTML = ''; return; }
-  try {
-    const j = await api(`/api/tasks?project=${encodeURIComponent(p.path)}&folder=${encodeURIComponent(folder)}`);
-    const maleCount = (j.groups && j.groups.male) ? j.groups.male.length : (j.tasks ? j.tasks.filter(t => (t.group || 'male') === 'male').length : 0);
-    const femaleCount = (j.groups && j.groups.female) ? j.groups.female.length : (j.tasks ? j.tasks.filter(t => t.group === 'female').length : 0);
-    $('schTask').innerHTML = `
-      <option value="male">男组（每次随机抽表，共 ${maleCount} 张）</option>
-      <option value="female">女组（每次随机抽表，共 ${femaleCount} 张）</option>
-    `;
-  } catch (e) {
-    $('schTask').innerHTML = `
-      <option value="male">男组（每次随机抽表）</option>
-      <option value="female">女组（每次随机抽表）</option>
-    `;
-  }
+  $('schTask').innerHTML = `
+    <option value="male">男组</option>
+    <option value="female">女组</option>
+  `;
 }
 function renderScheduleDetectOptions() {
   const i = $('schPhoto').value;
@@ -1263,10 +1253,15 @@ async function loadTasks() {
         tb.appendChild(tr);
         continue;
       }
-      const grp = t.group || 'male';
-      const grpBadge = grp === 'female'
-        ? `<span class="badge b-warn" style="cursor:pointer" title="点击切换为男组" onclick="setTaskGroup('${t.file}','male')">女组</span>`
-        : `<span class="badge b-ok" style="cursor:pointer" title="点击切换为女组" onclick="setTaskGroup('${t.file}','female')">男组</span>`;
+      const grp = t.group || '';
+      let grpBadge = '';
+      if (grp === 'female') {
+        grpBadge = `<span class="badge b-warn" style="cursor:pointer" title="当前为女组，点击切换为未分组" onclick="setTaskGroup('${t.file}','')">女组</span>`;
+      } else if (grp === 'male') {
+        grpBadge = `<span class="badge b-ok" style="cursor:pointer" title="当前为男组，点击切换为女组" onclick="setTaskGroup('${t.file}','female')">男组</span>`;
+      } else {
+        grpBadge = `<span class="badge b-dim" style="cursor:pointer" title="未分组，点击手动设为男组" onclick="setTaskGroup('${t.file}','male')">未分组</span>`;
+      }
       tr.innerHTML = `
         <td><div>${t.file}</div>
             <div class="mono" style="color:#9aa3b5">${t.raType || ''} · raId=${t.raId ?? '—'}
@@ -1323,8 +1318,8 @@ async function batchValidateTasks() {
 
 async function setTaskGroup(file, group) {
   try {
-    await api('/api/task', { action: 'set_group', name: file, group });
-    log(`已将任务表 ${file} 设为 ${group === 'female' ? '女组' : '男组'}`);
+    const r = await api('/api/task', { action: 'set_group', name: file, group });
+    log(`已将任务表 ${file} 手动设为 ${r.group_label || '未分组'}`);
     await loadTasks();
   } catch (e) { alert('设置组别失败：' + e.message); }
 }
@@ -1333,12 +1328,12 @@ async function changeCurrentTaskGroup(group) {
   if (!T.cur || !T.cur.summary || !T.cur.summary.file) return;
   const file = T.cur.summary.file;
   try {
-    await api('/api/task', { action: 'set_group', name: file, group });
-    T.cur.summary.group = group;
-    T.cur.summary.group_label = group === 'female' ? '女组' : '男组';
+    const r = await api('/api/task', { action: 'set_group', name: file, group });
+    T.cur.summary.group = r.group || '';
+    T.cur.summary.group_label = r.group_label || '未分组';
     $('taskMeta').textContent =
       `${T.cur.summary.points} 点 · ${T.cur.summary.mileage} km · ${T.cur.summary.duration}s · 配速 ${T.cur.summary.pace} · 步频 ${T.cur.summary.cadence} · 围栏 ${T.cur.summary.fence} · ${T.cur.summary.group_label}`;
-    log(`已将任务表 ${file} 设为 ${T.cur.summary.group_label}`);
+    log(`已将任务表 ${file} 手动设为 ${T.cur.summary.group_label}`);
     await loadTasks();
   } catch (e) { alert('设置组别失败：' + e.message); }
 }
@@ -1349,8 +1344,8 @@ async function openTask(file) {
   $('taskTitle').textContent = file;
   const s = r.summary;
   $('taskMeta').textContent =
-    `${s.points} 点 · ${s.mileage} km · ${s.duration}s · 配速 ${s.pace} · 步频 ${s.cadence} · 围栏 ${s.fence} · ${s.group_label || '男组'}`;
-  if ($('taskDlgGroup')) $('taskDlgGroup').value = s.group || 'male';
+    `${s.points} 点 · ${s.mileage} km · ${s.duration}s · 配速 ${s.pace} · 步频 ${s.cadence} · 围栏 ${s.fence} · ${s.group_label || '未分组'}`;
+  if ($('taskDlgGroup')) $('taskDlgGroup').value = s.group || '';
   $('genName').value = file.replace(/\.json$/i, '') + '_new.json';
   $('genPace').value = '';
   $('genDrift').value = '';

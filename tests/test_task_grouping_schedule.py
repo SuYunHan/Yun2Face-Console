@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""任务表分组（男组/女组）与定时运行组内随机抽表回归测试。"""
+"""任务表手动分组（男组/女组/未分组）与定时运行男组/女组选择及组内随机抽表回归测试。"""
 import json
 import shutil
 import uuid
@@ -33,22 +33,38 @@ def schedule_store(monkeypatch):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def test_task_group_inference_and_summary():
-    """测试男组/女组推断逻辑及 task_summary 注入 group 字段。"""
-    # 明确根据里程 < 1.5km 为 female，>= 1.5km 为 male
-    assert task_tools.infer_task_group("custom_test.json", mileage_km=1.2) == "female"
-    assert task_tools.infer_task_group("custom_test.json", mileage_km=1.8) == "male"
-    # 根据文件名推断
-    assert task_tools.infer_task_group("female_route.json") == "female"
-    assert task_tools.infer_task_group("women_run.json") == "female"
-    assert task_tools.infer_task_group("女生任务表.json") == "female"
-    assert task_tools.infer_task_group("male_route.json") == "male"
+def test_manual_task_group_and_no_auto_inference(tmp_path):
+    """测试取消自动推断，纯手动分组体系。"""
+    # 1. 未手动配置的任务表，哪怕里程 < 1.5km 或文件名带 female，绝不会被自动划分组别
+    assert task_tools.get_task_group("unassigned_route.json", groups_map={}) == ""
+    assert task_tools.get_task_group({"data": {"recordMileage": 1.2}}, groups_map={}) == ""
+    assert task_tools.get_task_group("female_run.json", groups_map={}) == ""
+    assert task_tools.get_task_group("女生任务.json", groups_map={}) == ""
+    assert task_tools.task_group_label("") == "未分组"
 
-    # tasklist_0 ~ tasklist_7 为男组，tasklist_8 为女组
-    assert task_tools.infer_task_group("tasklist_0.json", mileage_km=1.81) == "male"
-    assert task_tools.infer_task_group("tasklist_8.json", mileage_km=1.22) == "female"
+    # 2. 手动持久化分组测试
+    fake_groups_file = str(tmp_path / "task_groups.json")
+    fake_task_file = str(tmp_path / "custom.json")
+    with open(fake_task_file, "w", encoding="utf-8") as f:
+        json.dump({"data": {"pointsList": [{"point": "1,1", "runMileage": 1200}], "recordMileage": 1.2}}, f)
 
-    # task_summary 包含 group 和 group_label
+    # 手动设为女组
+    res = task_tools.set_task_group(fake_task_file, "female", groups_file=fake_groups_file)
+    assert res["group"] == "female"
+    assert res["group_label"] == "女组"
+    assert task_tools.get_task_group(filename="custom.json", groups_map=task_tools.load_task_groups_map(fake_groups_file)) == "female"
+
+    # 手动设为男组
+    res2 = task_tools.set_task_group(fake_task_file, "male", groups_file=fake_groups_file)
+    assert res2["group"] == "male"
+    assert res2["group_label"] == "男组"
+
+    # 手动取消分组
+    res3 = task_tools.set_task_group(fake_task_file, "", groups_file=fake_groups_file)
+    assert res3["group"] == ""
+    assert res3["group_label"] == "未分组"
+
+    # 3. 验证现有 tasks_fch 下的任务表手动分组状态：tasklist_0~7 为男组，tasklist_8 为女组
     s0 = task_tools.task_summary(str(TASKS_FCH / "tasklist_0.json"))
     assert s0["group"] == "male"
     assert s0["group_label"] == "男组"
@@ -69,7 +85,7 @@ def test_list_tasks_groups_and_api():
     male_files = groups["male"]
     female_files = groups["female"]
 
-    # 验证现有 9 张表的分组归属
+    # 验证现有 9 张表的手动分组归属
     for i in range(8):
         assert f"tasklist_{i}.json" in male_files
     assert "tasklist_8.json" in female_files
@@ -161,9 +177,7 @@ def test_ui_contains_grouping_and_male_female_options():
     assert "组别" in html
     assert "schTask" in html
 
-    # app.js 中 fillScheduleTasks 提供男组与女组两个选项
-    assert 'value="male"' in js
-    assert 'value="female"' in js
-    assert "男组" in js
-    assert "女组" in js
+    # app.js 中 fillScheduleTasks 提供清晰的男组与女组两个选项
+    assert '<option value="male">男组</option>' in js
+    assert '<option value="female">女组</option>' in js
     assert "setTaskGroup" in js

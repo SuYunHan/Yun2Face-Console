@@ -295,16 +295,16 @@ def _cleanup_task_pick(pick_dir: Optional[str]) -> None:
 
 
 def _task_file_group(path: str, groups_map: Optional[Dict[str, str]] = None) -> str:
-    """判定指定任务表文件的组别（'male' 男组 / 'female' 女组）。"""
+    """判定指定任务表文件的手动组别（'male' 男组 / 'female' 女组 / '' 未分组）。"""
     fname = os.path.basename(path)
     try:
         with open(path, "r", encoding="utf-8") as fh:
             d = json.load(fh)
         if isinstance(d, dict):
-            return task_tools.infer_task_group(d, filename=fname, groups_map=groups_map)
+            return task_tools.get_task_group(d, filename=fname, groups_map=groups_map)
     except Exception:
         pass
-    return task_tools.infer_task_group({}, filename=fname, groups_map=groups_map)
+    return task_tools.get_task_group({}, filename=fname, groups_map=groups_map)
 
 
 def list_group_tasks(proj: str, folder: str, group: str) -> List[str]:
@@ -332,7 +332,7 @@ def pick_random_group_task(proj: str, folder: str, group: str, rng=None) -> tupl
     group_files = list_group_tasks(proj, folder, norm_group)
     if not group_files:
         label = task_tools.task_group_label(norm_group)
-        raise ValueError(f"任务表目录 {folder} 中没有可用的『{label}』任务表")
+        raise ValueError(f"任务表目录 {folder} 中暂未手动分配属于『{label}』的任务表，请先在「跑步任务」页进行设置")
     chooser = rng if rng is not None else random
     return chooser.choice(group_files), group_files
 
