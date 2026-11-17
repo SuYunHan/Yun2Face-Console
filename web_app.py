@@ -602,13 +602,16 @@ def _load_schedules() -> None:
             now = time.time()
             changed = False
             for item in SCHEDULES.values():
-                # 兼容旧版“间隔分钟”记录，迁移为每天 07:30。
+                # 兼容旧版记录迁移
                 if not item.get("time_of_day"):
                     item["time_of_day"] = "07:30"
                     changed = True
+                if not item.get("days_of_week"):
+                    item["days_of_week"] = [1, 2, 3, 4, 5, 6, 7]
+                    changed = True
                 # 纠正“按服务器本地时区算出来”的旧 next_run。
                 if not _schedule_next_run_matches(item):
-                    item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
+                    item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now, days_of_week=item.get("days_of_week"))
                     changed = True
             nums = [int(str(k).lstrip("s")) for k in SCHEDULES
                     if str(k).lstrip("s").isdigit()]
@@ -646,6 +649,37 @@ def _validate_time_of_day(value, default: str = "07:00-08:00") -> str:
         return f"{hour:02d}:{minute:02d}"
 
     raise ValueError(f"每天运行时间格式应为 HH:MM 或 HH:MM-HH:MM，收到: {raw!r}")
+
+
+def _normalize_days_of_week(raw: Any) -> List[int]:
+    """将每周运行日规范化为 1~7 升序整数列表（1=周一, ..., 7=周日）。默认为每天 [1..7]。"""
+    if raw is None or raw == "":
+        return [1, 2, 3, 4, 5, 6, 7]
+    if isinstance(raw, str):
+        raw_str = raw.strip()
+        m_dash = re.fullmatch(r"([1-7])\s*[-~至到]\s*([1-7])", raw_str)
+        if m_dash:
+            start_d, end_d = int(m_dash.group(1)), int(m_dash.group(2))
+            if start_d <= end_d:
+                return list(range(start_d, end_d + 1))
+            return list(range(start_d, 8)) + list(range(1, end_d + 1))
+        tokens = re.split(r"[,，\s]+", raw_str)
+    elif isinstance(raw, (list, tuple, set)):
+        tokens = list(raw)
+    else:
+        tokens = [raw]
+
+    res = set()
+    for tok in tokens:
+        try:
+            val = int(tok)
+            if 1 <= val <= 7:
+                res.add(val)
+            elif val == 0:
+                res.add(7)
+        except (ValueError, TypeError):
+            pass
+    return sorted(res) if res else [1, 2, 3, 4, 5, 6, 7]
 
 
 def _clean_schedule_options(raw) -> Dict[str, Any]:
@@ -695,11 +729,12 @@ def create_schedule(body: Dict[str, Any]) -> Dict[str, Any]:
         now = time.time()
         sid = f"s{next(_SCHEDULE_SEQ)}"
         tod = _validate_time_of_day(body.get("time_of_day"))
+        dow = _normalize_days_of_week(body.get("days_of_week"))
         name = str(body.get("name") or "").strip()[:80] or sid
         item = {
-            "id": sid, "name": name, "time_of_day": tod,
+            "id": sid, "name": name, "time_of_day": tod, "days_of_week": dow,
             "enabled": bool(body.get("enabled", True)), "created": now,
-            "next_run": _next_daily(tod, now),
+            "next_run": _next_daily(tod, now, days_of_week=dow),
             "options": _clean_schedule_options(body.get("options")),
             "last_run": None, "last_started": None, "last_error": "",
         }
@@ -709,11 +744,11 @@ def create_schedule(body: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def update_schedule(body: Dict[str, Any]) -> Dict[str, Any]:
-    """修改已保存的定时任务：名称/时间/模式与任务选项/启用状态。
+    """修改已保存的定时任务：名称/时间/每周运行日/模式与任务选项/启用状态。
 
     - 只改传入的字段，未传的字段保持原值；
     - options 做浅合并，允许一次只改其中几项；
-    - 时间变更后立即重算 next_run，编辑后不再保留旧的 last_error。
+    - 时间或每周运行日变更后立即重算 next_run，编辑后不再保留旧的 last_error。
     """
     with SCHEDULE_LOCK:
         sid = str(body.get("id") or "")
@@ -724,14 +759,24 @@ def update_schedule(body: Dict[str, Any]) -> Dict[str, Any]:
         if "name" in body:
             name = str(body.get("name") or "").strip()[:80]
             item["name"] = name or sid
-        if "time_of_day" in body:
+        tod_changed = "time_of_day" in body
+        dow_changed = "days_of_week" in body
+        if tod_changed:
             tod = _validate_time_of_day(body.get("time_of_day"))
             item["time_of_day"] = tod
-            item["next_run"] = _next_daily(tod, now)
+        if dow_changed:
+            item["days_of_week"] = _normalize_days_of_week(body.get("days_of_week"))
+
+        if tod_changed or dow_changed:
+            item["next_run"] = _next_daily(
+                item.get("time_of_day", "07:00-08:00"), now, days_of_week=item.get("days_of_week")
+            )
         else:
             current = float(item.get("next_run", 0) or 0)
             if current <= 0 or now - current > SCHEDULE_GRACE_SEC:
-                item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
+                item["next_run"] = _next_daily(
+                    item.get("time_of_day", "07:00-08:00"), now, days_of_week=item.get("days_of_week")
+                )
         if "enabled" in body:
             item["enabled"] = bool(body.get("enabled"))
         if "options" in body:
@@ -747,7 +792,9 @@ def update_schedule(body: Dict[str, Any]) -> Dict[str, Any]:
 def _refresh_next_run(item: Dict[str, Any], now: float | None = None) -> None:
     """把 next_run 重排到下一个未来时间点（启用/修改时间时用，绝不补跑）。"""
     now = time.time() if now is None else now
-    item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
+    item["next_run"] = _next_daily(
+        item.get("time_of_day", "07:00-08:00"), now, days_of_week=item.get("days_of_week")
+    )
 
 
 def set_schedule_enabled(sid: str, enabled: bool) -> Dict[str, Any]:
@@ -807,7 +854,9 @@ def _schedule_step(now: float | None = None, *, stagger: float = 0.0) -> int:
             if next_run > now:
                 continue
             if now - next_run > SCHEDULE_GRACE_SEC:
-                item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
+                item["next_run"] = _next_daily(
+                    item.get("time_of_day", "07:00-08:00"), now, days_of_week=item.get("days_of_week")
+                )
                 item["last_skipped"] = now
                 item["skipped_count"] = int(item.get("skipped_count", 0) or 0) + 1
                 changed += 1
@@ -822,7 +871,9 @@ def _schedule_step(now: float | None = None, *, stagger: float = 0.0) -> int:
                 item["last_fired"] = now
                 if result.get("task_file") or run_opts.get("task_file"):
                     item["last_task_file"] = result.get("task_file") or run_opts.get("task_file")
-                item["next_run"] = _next_daily(item.get("time_of_day", "07:30"), now)
+                item["next_run"] = _next_daily(
+                    item.get("time_of_day", "07:00-08:00"), now, days_of_week=item.get("days_of_week")
+                )
                 item["last_error"] = ""
                 fired += 1
             except Exception as exc:  # noqa: BLE001
@@ -873,24 +924,17 @@ def _parse_time_of_day(value, default=(7, 30)) -> tuple:
     return default
 
 
-def _next_daily(value: str, now: float | None = None, rng=None) -> float:
+def _next_daily(value: str, now: float | None = None, days_of_week: Any = None, rng=None) -> float:
     """计算下一个 **定时时区（默认北京时间 UTC+8）** 的运行时间点。
 
+    - days_of_week: 允许运行的星期几（1~7，1=周一, ..., 7=周日），默认全周；
     - 单点时间（HH:MM）：精确调度到下一个该点（保持完全确定性）；
-    - 范围时间（HH:MM-HH:MM）：在每天的时间范围内随机挑选时刻触发，模拟真实作息。
+    - 范围时间（HH:MM-HH:MM）：在每周允许运行日期的时间范围内随机挑选时刻触发。
     """
     now_ts = time.time() if now is None else now
     sh, sm, eh, em = _parse_time_range(value)
     now_dt = datetime.fromtimestamp(now_ts, SCHEDULE_TZ)
-
-    # 1. 单点时间行为保持完全确定（兼容既有单点测试）
-    if (sh, sm) == (eh, em):
-        target = now_dt.replace(hour=sh, minute=sm, second=0, microsecond=0)
-        if target.timestamp() <= now_ts:
-            target += timedelta(days=1)
-        return target.timestamp()
-
-    # 2. 范围时间：在时间范围内随机选点
+    allowed_days = set(_normalize_days_of_week(days_of_week))
     chooser = rng if rng is not None else random
 
     def _window_for_date(base_date: datetime) -> tuple[datetime, datetime]:
@@ -902,6 +946,8 @@ def _next_daily(value: str, now: float | None = None, rng=None) -> float:
         return w_start, w_end
 
     def _random_point(w_start: datetime, w_end: datetime, min_start: datetime | None = None) -> datetime:
+        if (sh, sm) == (eh, em):
+            return w_start
         start_point = max(w_start, min_start) if min_start else w_start
         total_sec = int((w_end - start_point).total_seconds())
         if total_sec <= 0:
@@ -909,25 +955,35 @@ def _next_daily(value: str, now: float | None = None, rng=None) -> float:
         offset = chooser.randint(0, total_sec)
         return start_point + timedelta(seconds=offset)
 
-    # 检查今天的时间窗口
-    t_start, t_end = _window_for_date(now_dt)
-    if now_dt < t_start:
-        # 今天窗口还没到，整窗随机挑选
-        return _random_point(t_start, t_end).timestamp()
-    elif now_dt < t_end:
-        # 当前处于今天窗口中，在剩余时间中挑选（留至少 5 秒缓冲）
-        remain_sec = int((t_end - now_dt).total_seconds())
-        if remain_sec >= 10:
-            offset = chooser.randint(5, remain_sec)
-            return (now_dt + timedelta(seconds=offset)).timestamp()
+    # 1. 检查今天：如果今天属于允许运行的星期几
+    if now_dt.isoweekday() in allowed_days:
+        t_start, t_end = _window_for_date(now_dt)
+        if (sh, sm) == (eh, em):
+            if t_start.timestamp() > now_ts:
+                return t_start.timestamp()
+        else:
+            if now_dt < t_start:
+                return _random_point(t_start, t_end).timestamp()
+            elif now_dt < t_end:
+                remain_sec = int((t_end - now_dt).total_seconds())
+                if remain_sec >= 10:
+                    offset = chooser.randint(5, remain_sec)
+                    return (now_dt + timedelta(seconds=offset)).timestamp()
 
-    # 今天窗口已过，调度到明天窗口内随机时刻
-    m_start, m_end = _window_for_date(now_dt + timedelta(days=1))
-    return _random_point(m_start, m_end).timestamp()
+    # 2. 如果今天不符合或今天时间窗口已过，寻找未来第一个符合 allowed_days 的日期
+    for delta_days in range(1, 15):
+        future_dt = now_dt + timedelta(days=delta_days)
+        if future_dt.isoweekday() in allowed_days:
+            f_start, f_end = _window_for_date(future_dt)
+            return _random_point(f_start, f_end).timestamp()
+
+    # 兜底：明天的窗口
+    d_start, d_end = _window_for_date(now_dt + timedelta(days=1))
+    return _random_point(d_start, d_end).timestamp()
 
 
 def _schedule_next_run_matches(item: Dict[str, Any]) -> bool:
-    """next_run 落在定时时区后，是否属于设定时间（单点时相等，范围时落在范围内）。"""
+    """next_run 落在定时时区后，是否符合设定星期与时间。"""
     try:
         next_run = float(item.get("next_run") or 0)
     except (TypeError, ValueError):
@@ -935,10 +991,12 @@ def _schedule_next_run_matches(item: Dict[str, Any]) -> bool:
     if next_run <= 0:
         return False
     local = datetime.fromtimestamp(next_run, SCHEDULE_TZ)
+    allowed_days = set(_normalize_days_of_week(item.get("days_of_week")))
+    if local.isoweekday() not in allowed_days:
+        return False
     sh, sm, eh, em = _parse_time_range(item.get("time_of_day", "07:30"))
     if (sh, sm) == (eh, em):
         return (local.hour, local.minute) == (sh, sm)
-    # 范围时间：判断 local 对应时间点是否在时间窗内
     local_mins = local.hour * 60 + local.minute
     start_mins = sh * 60 + sm
     end_mins = eh * 60 + em

@@ -182,11 +182,17 @@ def test_ui_contains_grouping_and_male_female_options():
     assert '<option value="female">女组</option>' in js
     assert "setTaskGroup" in js
 
-    # index.html 与 app.js 支持运行时间范围
+    # index.html 与 app.js 支持运行时间范围与每周运行日
     assert "schTimeStart" in html
     assert "schTimeEnd" in html
     assert "schTimeStart" in js
     assert "schTimeEnd" in js
+    assert "schDay" in html
+    assert "schDay" in js
+    assert "setScheduleDaysQuick" in js
+    assert "getSelectedScheduleDays" in js
+    assert "setSelectedScheduleDays" in js
+    assert "formatDaysOfWeek" in js
 
 
 def test_time_range_validation_and_scheduling(schedule_store):
@@ -237,3 +243,72 @@ def test_time_range_validation_and_scheduling(schedule_store):
     })
     assert item["time_of_day"] == "07:00-08:00"
     assert web_app._schedule_next_run_matches(item) is True
+
+
+def test_days_of_week_normalization_and_scheduling(schedule_store):
+    """测试每周运行日配置规范化、调度过滤与周期跳转。"""
+    from datetime import datetime, timezone, timedelta
+    tz8 = timezone(timedelta(hours=8))
+
+    # 1. 规范化函数测试
+    assert web_app._normalize_days_of_week(None) == [1, 2, 3, 4, 5, 6, 7]
+    assert web_app._normalize_days_of_week("") == [1, 2, 3, 4, 5, 6, 7]
+    assert web_app._normalize_days_of_week([]) == [1, 2, 3, 4, 5, 6, 7]
+    assert web_app._normalize_days_of_week([5, 1, 3]) == [1, 3, 5]
+    assert web_app._normalize_days_of_week("1, 3, 5") == [1, 3, 5]
+    assert web_app._normalize_days_of_week("1-5") == [1, 2, 3, 4, 5]
+    assert web_app._normalize_days_of_week("6-7") == [6, 7]
+    assert web_app._normalize_days_of_week([0, 6]) == [6, 7]  # 0 映射为周日 7
+
+    # 2. 调度测试：2026-11-18 为周三 (isoweekday = 3)
+    wed_0600 = datetime(2026, 11, 18, 6, 0, 0, tzinfo=tz8).timestamp()
+    assert datetime.fromtimestamp(wed_0600, tz8).isoweekday() == 3
+
+    # 情况 A：如果允许周三，且 06:00 尚未开始 (07:00-08:00)，调度必须落在今天 (周三)
+    next_ts = web_app._next_daily("07:00-08:00", now=wed_0600, days_of_week=[3, 5])
+    dt = datetime.fromtimestamp(next_ts, tz8)
+    assert dt.isoweekday() == 3
+    assert dt.day == 18
+    assert 7 <= dt.hour <= 8
+
+    # 情况 B：如果不允许周三（仅允许周一和周五 [1, 5]），即使 06:00 还没到，也必须跳过周三与周四，直接调度到本周五 (2026-11-20)
+    next_ts_fri = web_app._next_daily("07:00-08:00", now=wed_0600, days_of_week=[1, 5])
+    dt_fri = datetime.fromtimestamp(next_ts_fri, tz8)
+    assert dt_fri.isoweekday() == 5
+    assert dt_fri.day == 20
+    assert 7 <= dt_fri.hour <= 8
+
+    # 情况 C：周三 08:30 已过，允许周三和周五 [3, 5]，必须顺延至本周五 (2026-11-20)
+    wed_0830 = datetime(2026, 11, 18, 8, 30, 0, tzinfo=tz8).timestamp()
+    next_ts_after = web_app._next_daily("07:00-08:00", now=wed_0830, days_of_week=[3, 5])
+    dt_after = datetime.fromtimestamp(next_ts_after, tz8)
+    assert dt_after.isoweekday() == 5
+    assert dt_after.day == 20
+    assert 7 <= dt_after.hour <= 8
+
+    # 情况 D：周五 09:00 已过，允许周一和周三 [1, 3]，必须跨周末顺延到下周一 (2026-11-23)
+    fri_0900 = datetime(2026, 11, 20, 9, 0, 0, tzinfo=tz8).timestamp()
+    next_ts_next_mon = web_app._next_daily("07:00-08:00", now=fri_0900, days_of_week=[1, 3])
+    dt_next_mon = datetime.fromtimestamp(next_ts_next_mon, tz8)
+    assert dt_next_mon.isoweekday() == 1
+    assert dt_next_mon.day == 23
+    assert 7 <= dt_next_mon.hour <= 8
+
+    # 3. 创建与更新 API 的 days_of_week 协同测试
+    item = web_app.create_schedule({
+        "name": "周二周四定时",
+        "time_of_day": "07:00-08:00",
+        "days_of_week": [2, 4],
+        "options": {"mode": "dry", "task_file": "male"},
+    })
+    assert item["days_of_week"] == [2, 4]
+    local_next = datetime.fromtimestamp(item["next_run"], tz8)
+    assert local_next.isoweekday() in [2, 4]
+    assert web_app._schedule_next_run_matches(item) is True
+
+    # 更新为仅周日运行 [7]
+    updated = web_app.update_schedule({"id": item["id"], "days_of_week": [7]})
+    assert updated["days_of_week"] == [7]
+    local_sun = datetime.fromtimestamp(updated["next_run"], tz8)
+    assert local_sun.isoweekday() == 7
+    assert web_app._schedule_next_run_matches(updated) is True

@@ -818,6 +818,38 @@ function renderScheduleOrphans(all) {
     + '在左侧选中对应学号后可查看、修改。';
 }
 
+function setScheduleDaysQuick(type) {
+  const cbs = document.querySelectorAll('input[name="schDay"]');
+  cbs.forEach(cb => {
+    const val = Number(cb.value);
+    if (type === 'all') cb.checked = true;
+    else if (type === 'work') cb.checked = (val >= 1 && val <= 5);
+    else if (type === 'weekend') cb.checked = (val === 6 || val === 7);
+  });
+}
+
+function getSelectedScheduleDays() {
+  const cbs = document.querySelectorAll('input[name="schDay"]:checked');
+  return Array.from(cbs).map(cb => Number(cb.value)).sort((a, b) => a - b);
+}
+
+function setSelectedScheduleDays(days) {
+  const set = new Set(Array.isArray(days) ? days.map(Number) : [1, 2, 3, 4, 5, 6, 7]);
+  const cbs = document.querySelectorAll('input[name="schDay"]');
+  cbs.forEach(cb => {
+    cb.checked = set.has(Number(cb.value));
+  });
+}
+
+function formatDaysOfWeek(days) {
+  const d = Array.isArray(days) ? days.map(Number).sort((a, b) => a - b) : [1, 2, 3, 4, 5, 6, 7];
+  if (!d.length || d.length === 7) return '每天';
+  if (d.length === 5 && d.every((v, i) => v === i + 1)) return '工作日(一至五)';
+  if (d.length === 2 && d[0] === 6 && d[1] === 7) return '周末(六日)';
+  const map = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五', 6: '周六', 7: '周日' };
+  return d.map(v => map[v] || `周${v}`).join('、');
+}
+
 function renderScheduleList() {
   const box = $('scheduleList');
   if (!S.student) {
@@ -843,11 +875,12 @@ function renderScheduleList() {
     else if (grp === 'male') grpLabel = '男组（每次随机抽表）';
     else grpLabel = o.task_file || '随机';
     const lastPick = s.last_task_file ? ` · 最近运行：${s.last_task_file}` : '';
-    const timeLabel = s.time_of_day ? (s.time_of_day.includes('-') ? `每天 ${s.time_of_day.replace('-', ' ~ ')}（随机范围）` : `每天 ${s.time_of_day}`) : '每天 07:00 ~ 08:00（随机范围）';
+    const dayLabel = formatDaysOfWeek(s.days_of_week);
+    const timeLabel = s.time_of_day ? (s.time_of_day.includes('-') ? `${s.time_of_day.replace('-', ' ~ ')}（随机范围）` : s.time_of_day) : '07:00 ~ 08:00（随机范围）';
     return `<div class="runitem ${s.id === SCH.editing ? 'active' : ''}">
       <span class="st ${s.enabled ? 'st-running' : 'st-stopped'}">${s.enabled ? '启用' : '停用'}</span>
       <div style="flex:1"><div><b>${stu}</b>${label}</div>
-        <div class="meta">${timeLabel} · 下次 ${next} · 上次 ${last}${skipped}</div>
+        <div class="meta">${dayLabel} ${timeLabel} · 下次 ${next} · 上次 ${last}${skipped}</div>
         <div class="meta">${o.mode === 'dry' ? '离线演练' : '真实运行'} · ${o.task_folder || '?'}/${grpLabel}${lastPick}${o.face_photo ? ' · 人脸 ' + o.face_photo : ''}</div>
         ${s.last_error ? `<div class="detail" style="color:#ff8a8a">${s.last_error}</div>` : ''}</div>
       <button onclick="editSchedule('${s.id}')">修改</button>
@@ -903,6 +936,7 @@ async function applyScheduleForm(item) {
     const want = (o.face_student || S.student) + '/' + o.face_stem + '.json';
     if ([...$('schDetect').options].some(x => x.value === want)) $('schDetect').value = want;
   }
+  setSelectedScheduleDays(item.days_of_week || [1, 2, 3, 4, 5, 6, 7]);
   updateScheduleFormMode();
 }
 
@@ -917,6 +951,7 @@ async function editSchedule(id) {
 
 function cancelScheduleEdit() {
   SCH.editing = null;
+  setSelectedScheduleDays([1, 2, 3, 4, 5, 6, 7]);
   updateScheduleFormMode();
   log('已取消修改定时任务');
   loadSchedules();
@@ -964,17 +999,23 @@ async function saveSchedule() {
     alert('请设置每天运行时间范围的起始时间与结束时间');
     return;
   }
+  const days_of_week = getSelectedScheduleDays();
+  if (!days_of_week.length) {
+    alert('请至少选择一个每周运行日');
+    return;
+  }
   const time_of_day = (tStart === tEnd) ? tStart : `${tStart}-${tEnd}`;
   try {
     if (SCH.editing) {
       await api('/api/schedules', { action: 'update', id: SCH.editing,
-        name, time_of_day, options });
+        name, time_of_day, days_of_week, options });
       log('已保存定时任务修改：' + name);
       SCH.editing = null;
     } else {
-      await api('/api/schedules', { action: 'create', name, time_of_day, options });
+      await api('/api/schedules', { action: 'create', name, time_of_day, days_of_week, options });
       log('已保存定时任务');
       $('schName').value = '';   // 新建成功后清空名称，避免下一条沿用
+      setSelectedScheduleDays([1, 2, 3, 4, 5, 6, 7]);
     }
     updateScheduleFormMode();
     await loadSchedules();
