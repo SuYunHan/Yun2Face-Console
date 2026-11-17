@@ -749,6 +749,12 @@ img.tn:hover {
 }
 .runitem .meta { color: var(--fg-dim); font-size: 12px; }
 
+/* 运行实例列表 */
+#rList {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
 /* 运行日志输出窗口 */
 .runlog {
   background: var(--bg-terminal);
@@ -1364,8 +1370,8 @@ img.zoom {
         </div>
 
         <div class="runbox">
-          <h4>运行实例监控</h4>
-          <div id="rList"></div>
+          <h4 id="rListTitle">运行实例监控</h4>
+          <div id="rList" role="region" aria-labelledby="rListTitle" tabindex="0"></div>
         </div>
       </div>
 
