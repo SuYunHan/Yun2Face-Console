@@ -245,6 +245,35 @@ def test_time_range_validation_and_scheduling(schedule_store):
     assert item["time_of_day"] == "07:00-08:00"
     assert web_app._schedule_next_run_matches(item) is True
 
+    # 5. 晚间范围任务触发后绝不重复在当晚再次排期
+    eve_item = web_app.create_schedule({
+        "name": "晚间任务",
+        "time_of_day": "20:00-22:00",
+        "options": {"mode": "dry", "task_file": "male"},
+    })
+    # 模拟在 20:15 到期触发
+    eve_2015 = datetime(2026, 11, 18, 20, 15, 0, tzinfo=tz8).timestamp()
+    eve_item["next_run"] = eve_2015
+
+    # 记录触发
+    fired = []
+    old_start_run = web_app.start_run
+    web_app.start_run = lambda opts: fired.append(opts) or {"id": "run_eve_1"}
+    try:
+        web_app._schedule_step(now=eve_2015)
+        assert len(fired) == 1
+        # 跑完后 next_run 必须跨越到次日 11-19，绝不能还在当晚 20:xx~21:xx 造成重复跑！
+        next_dt = datetime.fromtimestamp(eve_item["next_run"], tz8)
+        assert next_dt.day == 19
+        assert 20 <= next_dt.hour <= 22
+
+        # 紧接着 5 分钟后 20:20 再次轮询调度，绝不能再次触发！
+        eve_2020 = datetime(2026, 11, 18, 20, 20, 0, tzinfo=tz8).timestamp()
+        web_app._schedule_step(now=eve_2020)
+        assert len(fired) == 1, "同一晚时间窗口内被重复触发！"
+    finally:
+        web_app.start_run = old_start_run
+
 
 def test_days_of_week_normalization_and_scheduling(schedule_store):
     """测试每周运行日配置规范化、调度过滤与周期跳转。"""

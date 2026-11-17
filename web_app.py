@@ -870,9 +870,17 @@ def _schedule_step(now: float | None = None, *, stagger: float = 0.0) -> int:
             next_run = float(item.get("next_run", 0) or 0)
             if next_run > now:
                 continue
+            # 检查上一次运行是否仍在进行中（防止并发重复执行同一任务）
+            last_run_id = item.get("last_run")
+            if last_run_id and last_run_id in RUNS:
+                last_proc = RUNS[last_run_id].get("proc")
+                if last_proc and last_proc.poll() is None:
+                    continue
             if now - next_run > SCHEDULE_GRACE_SEC:
                 item["next_run"] = _next_daily(
-                    item.get("time_of_day", "07:00-08:00"), now, days_of_week=item.get("days_of_week")
+                    item.get("time_of_day", "07:00-08:00"), now,
+                    days_of_week=item.get("days_of_week"),
+                    advance=True
                 )
                 item["last_skipped"] = now
                 item["skipped_count"] = int(item.get("skipped_count", 0) or 0) + 1
@@ -889,7 +897,9 @@ def _schedule_step(now: float | None = None, *, stagger: float = 0.0) -> int:
                 if result.get("task_file") or run_opts.get("task_file"):
                     item["last_task_file"] = result.get("task_file") or run_opts.get("task_file")
                 item["next_run"] = _next_daily(
-                    item.get("time_of_day", "07:00-08:00"), now, days_of_week=item.get("days_of_week")
+                    item.get("time_of_day", "07:00-08:00"), now,
+                    days_of_week=item.get("days_of_week"),
+                    advance=True
                 )
                 item["last_error"] = ""
                 fired += 1
@@ -941,10 +951,12 @@ def _parse_time_of_day(value, default=(7, 30)) -> tuple:
     return default
 
 
-def _next_daily(value: str, now: float | None = None, days_of_week: Any = None, rng=None) -> float:
+def _next_daily(value: str, now: float | None = None, days_of_week: Any = None,
+                rng=None, advance: bool = False) -> float:
     """计算下一个 **定时时区（默认北京时间 UTC+8）** 的运行时间点。
 
     - days_of_week: 允许运行的星期几（1~7，1=周一, ..., 7=周日），默认全周；
+    - advance: 为 True 时强制顺延至下一个运行日（防止当天同一个时间窗口内重复触发）；
     - 单点时间（HH:MM）：精确调度到下一个该点（保持完全确定性）；
     - 范围时间（HH:MM-HH:MM）：在每周允许运行日期的时间范围内随机挑选时刻触发。
     """
@@ -972,8 +984,8 @@ def _next_daily(value: str, now: float | None = None, days_of_week: Any = None, 
         offset = chooser.randint(0, total_sec)
         return start_point + timedelta(seconds=offset)
 
-    # 1. 检查今天：如果今天属于允许运行的星期几
-    if now_dt.isoweekday() in allowed_days:
+    # 1. 检查今天：未指定 advance 且今天属于允许运行的星期几
+    if not advance and now_dt.isoweekday() in allowed_days:
         t_start, t_end = _window_for_date(now_dt)
         if (sh, sm) == (eh, em):
             if t_start.timestamp() > now_ts:
@@ -987,12 +999,18 @@ def _next_daily(value: str, now: float | None = None, days_of_week: Any = None, 
                     offset = chooser.randint(5, remain_sec)
                     return (now_dt + timedelta(seconds=offset)).timestamp()
 
-    # 2. 如果今天不符合或今天时间窗口已过，寻找未来第一个符合 allowed_days 的日期
-    for delta_days in range(1, 15):
+    # 2. 跨日顺延：若已要求 advance、或者今天窗口已结束，寻找未来第一个符合 allowed_days 的日期
+    # 若配置了跨午夜范围（如 22:00~06:00），且当前时间处于下半夜（如 01:00，此时当晚 22:00 的窗口还在未来）：
+    # 从当天（delta_days=0）开始找未来窗口；否则从次日（delta_days=1）开始找。
+    t_start_today, _ = _window_for_date(now_dt)
+    start_delta = 0 if (advance and t_start_today.timestamp() > now_ts) else 1
+
+    for delta_days in range(start_delta, 15):
         future_dt = now_dt + timedelta(days=delta_days)
         if future_dt.isoweekday() in allowed_days:
             f_start, f_end = _window_for_date(future_dt)
-            return _random_point(f_start, f_end).timestamp()
+            if f_start.timestamp() > now_ts:
+                return _random_point(f_start, f_end).timestamp()
 
     # 兜底：明天的窗口
     d_start, d_end = _window_for_date(now_dt + timedelta(days=1))
