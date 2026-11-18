@@ -749,8 +749,8 @@ img.tn:hover {
 }
 .runitem .meta { color: var(--fg-dim); font-size: 12px; }
 
-/* 运行实例列表 */
-#rList {
+/* 运行实例与历史记录列表 */
+#rList, #historyRuns {
   max-height: 500px;
   overflow-y: auto;
 }
@@ -1252,7 +1252,7 @@ img.zoom {
         </div>
       </div>
       <div class="history-layout" style="margin-top:12px">
-        <div class="history-list"><h4>历史跑步记录</h4><div id="historyRuns"></div></div>
+        <div class="history-list"><h4 id="historyRunsTitle">历史跑步记录</h4><div id="historyRuns" role="region" aria-labelledby="historyRunsTitle" tabindex="0"></div></div>
         <div class="history-preview"><h4 id="historyPreviewTitle">预览</h4>
           <div id="historyMap" class="routemap" hidden></div>
           <canvas id="historyCanvas" class="routecanvas" width="900" height="360"></canvas>
