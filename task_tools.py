@@ -22,11 +22,7 @@ runMileage/runStatus/runStep/runTime/speed/ts）里，**runMileage/runTime/runSt
 - `tools/pace_changer.change_pace`：配速缩放 factor（**只允许 factor ≤ 1，即不能变快**，
   超出会打印"已经超越目标时间，停止放缩"），同步缩 duration / 步频 / 每点 speed、
   runTime，并把 runStep 除以 factor（步数随配速变快而减少）。
-- `tools/drift.add_drift`：给所有坐标加同一个 ±1e-9 度的微小偏移，再按坐标重算里程。
-
-**已知偏差（本模块主动修正，会在报告里标出）**：项目的 `add_drift` 只更新
-`recordMileage`，**不动每点 runMileage**，于是表内会出现"末点 runMileage ≠ recordMileage"。
-本模块在生成时把每点 runMileage 也按新坐标重算，保持表内自洽。
+- `tools/drift.add_drift`：基于一阶高斯-马尔可夫模型（FOGM）的真实 GPS 连续定位漂移与步态抖动模拟，并按新坐标重算里程。
 """
 from __future__ import annotations
 
@@ -483,9 +479,8 @@ def generate_variant(src: str, dst: str, seed: Optional[int] = None,
 
     - 配速缩放沿用 `tools/pace_changer.change_pace` 的口径：factor = 目标/当前，
       **factor > 1 直接拒绝**（与项目一样不允许"改快"）。
-    - 漂移沿用 `tools/drift.add_drift` 的口径：全表同向加一个小偏移。
-    - rebuild_mileage：把每点 runMileage 按新坐标累积重算，使表内自洽
-      （修正项目 add_drift 只改表头、不改点列的已知不一致）。
+    - 漂移：全表加微小偏移（历史单表派生工具）。
+    - rebuild_mileage：把每点 runMileage 按新坐标累积重算，使表内自洽。
     """
     d = load_task(src)
     out = copy.deepcopy(d)

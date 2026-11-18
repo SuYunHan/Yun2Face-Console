@@ -91,8 +91,9 @@ def test_gzip_apk_header_bytes_match_jdk():
     out = yh.gzip_apk(raw)
     assert out[:10] == bytes.fromhex("1f8b08000000000000ff")
     assert gzip.decompress(out) == raw
-    default = gzip.compress(raw)
-    assert (default[4:8] != b"\x00\x00\x00\x00") or (default[9] != 0xFF)
+    # 对齐 JDK GZIPOutputStream 容器头：mtime=0, OS=0xFF
+    assert out[4:8] == b"\x00\x00\x00\x00"
+    assert out[9] == 0xFF
 
 
 # ------------------------------------------------------------ split 体
