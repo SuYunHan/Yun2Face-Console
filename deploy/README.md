@@ -37,4 +37,4 @@ sudo PYTHON_BIN=/opt/yunForNewVersion/.venv/bin/python RUN_USER=yunrun RUN_GROUP
   bash deploy/install_systemd.sh /opt/yunForNewVersion
 ```
 
-服务会自动重启，默认等待 5 秒；运行输出由 journald 管理，网页里的任务日志仍保存到项目的 `web_data/runs`。
+服务会自动重启，默认等待 5 秒；运行输出由 journald 管理，网页里的任务日志按天写在项目的 `web_data/runs/<年-月>/<年-月-日>.json`。

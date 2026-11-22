@@ -89,8 +89,9 @@ CFG = {
 }
 
 RUN_DATA_DIR = os.path.join(HERE, "web_data", "runs")
-RUNS_FILE = os.path.join(RUN_DATA_DIR, "runs.json")
 SCHEDULES_FILE = os.path.join(RUN_DATA_DIR, "schedules.json")
+_RUN_MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
+_RUN_DAY_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.json$")
 HISTORY_DIR = os.path.join(HERE, "students_history")
 
 TASK_FOLDER_RE = re.compile(r"^tasks_[A-Za-z0-9_\-]{1,32}$")
@@ -102,54 +103,198 @@ _RUN_SEQ = itertools.count(1)
 RUN_LINE_CAP = 3000          # 每个 run 保留的最大行数（防内存爆）
 
 
-def _persist_run(run: Dict[str, Any]) -> None:
-    """持久化运行元数据和日志；不写入 proc 等不可序列化对象。"""
-    with _LOCK:
-        os.makedirs(RUN_DATA_DIR, exist_ok=True)
-        record = {k: v for k, v in run.items() if k not in {"proc"}}
-        record["lines"] = list(run.get("lines") or [])[-RUN_LINE_CAP:]
-        records = {}
-        if os.path.isfile(RUNS_FILE):
-            try:
-                with open(RUNS_FILE, "r", encoding="utf-8", errors="replace") as fh:
-                    raw = fh.read()
-                try:
-                    records = json.loads(raw) or {}
-                except json.JSONDecodeError:
-                    # 兼容旧版本并发写入留下的尾部残片，尽量恢复前面的完整对象。
-                    records, _ = json.JSONDecoder().raw_decode(raw.lstrip())
-            except Exception:
-                records = {}
-        records[str(run["id"])] = record
-        tmp = RUNS_FILE + ".tmp"
+def _run_calendar_day(started: Any) -> str:
+    """运行开始时间所在的日期（与定时任务同一时区，默认北京时间）。无法解析时返回空串。"""
+    if started is None or started == "":
+        return ""
+    try:
+        ts = float(started)
+    except (TypeError, ValueError):
+        return ""
+    if ts != ts:  # NaN
+        return ""
+    try:
+        return datetime.fromtimestamp(ts, SCHEDULE_TZ).strftime("%Y-%m-%d")
+    except (OverflowError, OSError, ValueError):
+        return ""
+
+
+def _run_store_path(day: str) -> str:
+    """每月一文件夹、每天一文件：web_data/runs/YYYY-MM/YYYY-MM-DD.json。"""
+    if not day or not _RUN_DAY_RE.match(day + ".json") or not day.startswith(day[:7] + "-"):
+        return os.path.join(RUN_DATA_DIR, "unknown", "unknown.json")
+    return os.path.join(RUN_DATA_DIR, day[:7], day + ".json")
+
+
+def _read_run_file(path: str, *, legacy: bool = False) -> Dict[str, Any] | None:
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            raw = fh.read()
+    except FileNotFoundError:
+        return None
+    try:
+        records = json.loads(raw)
+    except json.JSONDecodeError:
+        if not legacy:
+            raise ValueError(f"运行日志 JSON 损坏: {path}") from None
+        try:
+            # 旧版本有时会在完整 JSON 对象后留下尾部残片。
+            records, _ = json.JSONDecoder().raw_decode(raw.lstrip())
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"旧运行日志 JSON 损坏: {path}") from exc
+    if not isinstance(records, dict) or any(not isinstance(record, dict) for record in records.values()):
+        raise ValueError(f"运行日志格式无效: {path}")
+    return records
+
+
+def _write_run_file(path: str, records: Dict[str, Any]) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    try:
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(records, fh, ensure_ascii=False, indent=2)
-        os.replace(tmp, RUNS_FILE)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+
+
+def _iter_run_store_files() -> List[str]:
+    root = RUN_DATA_DIR
+    try:
+        with os.scandir(root) as entries:
+            directories = sorted(entry.name for entry in entries if entry.is_dir())
+    except FileNotFoundError:
+        return []
+    found: List[str] = []
+    if "unknown" in directories:
+        found.append(_run_store_path(""))
+    for month in directories:
+        if not _RUN_MONTH_RE.match(month):
+            continue
+        mdir = os.path.join(root, month)
+        for name in sorted(os.listdir(mdir)):
+            matched = _RUN_DAY_RE.match(name)
+            if not matched or not matched.group(1).startswith(month + "-"):
+                continue
+            found.append(os.path.join(mdir, name))
+    return found
+
+
+def _remove_empty_run_dir(path: str) -> None:
+    """只删除跑完后变空的月份目录或 unknown 目录，不动 web_data/runs 本身。"""
+    root = os.path.normcase(os.path.abspath(RUN_DATA_DIR))
+    cur = os.path.normcase(os.path.abspath(path))
+    if cur == root or not cur.startswith(root + os.sep):
+        return
+    try:
+        if os.path.isdir(path) and not os.listdir(path):
+            os.rmdir(path)
+    except OSError:
+        pass
+
+
+def _run_record(run: Dict[str, Any]) -> Dict[str, Any]:
+    record = {k: v for k, v in run.items() if k not in {"proc", "_store_path"}}
+    record["lines"] = list(run.get("lines") or [])[-RUN_LINE_CAP:]
+    return record
+
+
+def _persist_run(run: Dict[str, Any]) -> None:
+    """首次写入按开始日期归档，之后始终更新同一个文件。"""
+    with _LOCK:
+        rid = run["id"]
+        if RUNS.get(rid) is not run:
+            return
+        path = run.get("_store_path") or _run_store_path(_run_calendar_day(run.get("started")))
+        records = _read_run_file(path) or {}
+        records[rid] = _run_record(run)
+        _write_run_file(path, records)
+        run["_store_path"] = path
+
+
+def _restore_run(rid: str, record: Dict[str, Any], path: str) -> Dict[str, Any]:
+    record = dict(record)
+    record["id"] = rid
+    record["proc"] = None
+    record["_store_path"] = path
+    record["lines"] = list(record.get("lines") or [])[-RUN_LINE_CAP:]
+    if record.get("status") == "running":
+        record["status"] = "stopped"
+        record["verdict"] = "网页服务重启时中断"
+    return record
+
+
+def _migrate_legacy_runs_file(records_by_path: Dict[str, Dict[str, Any]],
+                              paths_by_id: Dict[str, str]) -> None:
+    """已有一致的日文件可用于重试，全部写入成功后才删除旧文件。"""
+    legacy = os.path.join(RUN_DATA_DIR, "runs.json")
+    records = _read_run_file(legacy, legacy=True)
+    if records is None:
+        return
+    buckets: Dict[str, Dict[str, Any]] = {}
+    for rid, record in records.items():
+        existing_path = paths_by_id.get(rid)
+        if existing_path is not None:
+            if records_by_path[existing_path][rid] != record:
+                raise ValueError(f"运行日志迁移冲突: {rid} 同时存在于 {legacy} 和 {existing_path}")
+            continue
+        day = _run_calendar_day(record.get("started"))
+        path = _run_store_path(day)
+        buckets.setdefault(path, {})[rid] = record
+    for path, items in buckets.items():
+        merged = {**records_by_path.get(path, {}), **items}
+        _write_run_file(path, merged)
+        records_by_path[path] = merged
+    os.remove(legacy)
 
 
 def _load_persisted_runs() -> None:
-    if not os.path.isfile(RUNS_FILE):
-        return
-    try:
-        with open(RUNS_FILE, "r", encoding="utf-8", errors="replace") as fh:
-            raw = fh.read()
-        try:
-            records = json.loads(raw) or {}
-        except json.JSONDecodeError:
-            records, _ = json.JSONDecoder().raw_decode(raw.lstrip())
-        for rid, record in records.items():
-            record["id"] = rid
-            record["proc"] = None
-            record["lines"] = list(record.get("lines") or [])[-RUN_LINE_CAP:]
-            if record.get("status") == "running":
-                record["status"] = "stopped"
-                record["verdict"] = "网页服务重启时中断"
-            RUNS[rid] = record
-        nums = [int(str(r).lstrip("r")) for r in RUNS if str(r).lstrip("r").isdigit()]
-        global _RUN_SEQ
+    global _RUN_SEQ
+    with _LOCK:
+        records_by_path = {path: _read_run_file(path) or {} for path in _iter_run_store_files()}
+        paths_by_id: Dict[str, str] = {}
+        for path, records in records_by_path.items():
+            for rid in records:
+                if rid in paths_by_id:
+                    raise ValueError(f"运行编号 {rid} 重复: {paths_by_id[rid]} 和 {path}")
+                paths_by_id[rid] = path
+        _migrate_legacy_runs_file(records_by_path, paths_by_id)
+        loaded = {rid: _restore_run(rid, record, path)
+                  for path, records in records_by_path.items()
+                  for rid, record in records.items()}
+        RUNS.update(loaded)
+        nums = [int(rid[1:]) for rid in RUNS if re.fullmatch(r"r[0-9]+", rid)]
         _RUN_SEQ = itertools.count(max(nums, default=0) + 1)
-    except Exception:
-        return
+
+
+def clear_finished_runs() -> None:
+    """删掉已经结束的实例；仍在运行的留在对应日期文件里。"""
+    with _LOCK:
+        finished_by_path: Dict[str, List[str]] = {}
+        for rid, run in RUNS.items():
+            if run.get("status") != "running":
+                path = run.get("_store_path") or _run_store_path(_run_calendar_day(run.get("started")))
+                finished_by_path.setdefault(path, []).append(rid)
+        for path, finished_ids in finished_by_path.items():
+            records = _read_run_file(path) or {}
+            for rid in finished_ids:
+                records.pop(rid, None)
+            if records:
+                _write_run_file(path, records)
+            else:
+                try:
+                    os.remove(path)
+                except FileNotFoundError:
+                    pass
+                _remove_empty_run_dir(os.path.dirname(path))
+            for rid in finished_ids:
+                RUNS.pop(rid)
 
 
 def _mask_line(line: str) -> str:
@@ -541,6 +686,8 @@ def list_runs() -> List[Dict[str, Any]]:
                     # 实例列表要显示"运行开始时间"：老记录可能没有 started 字段，
                     # 用 .get 兼容，前端把 None 显示成 "—"。
                     "started": run.get("started"), "ended": run.get("ended"),
+                    # 前端用当前定时时区分组。历史记录的归档路径在首次写入后固定。
+                    "day": _run_calendar_day(run.get("started")),
                     "elapsed": round((run.get("ended") or time.time()) -
                                      (run.get("started") or time.time()), 1),
                     "lines": len(run["lines"]), "returncode": run["returncode"]})
@@ -1920,7 +2067,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": True, "root": CFG["projects_root"],
                                "projects": discover_projects()})
         if path == "/api/runs":
-            return self._json({"ok": True, "runs": list_runs()})
+            return self._json({"ok": True, "runs": list_runs(), "time_zone": schedule_timezone_info()})
         if path == "/api/schedules":
             return self._json({"ok": True, "schedules": list_schedules(),
                                "time_zone": schedule_timezone_info()})
@@ -2004,12 +2151,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, **stop_run(body.get("id", ""),
                                                           force=bool(body.get("force")))})
             if act == "clear":
-                with _LOCK:
-                    for rid in [k for k, v in RUNS.items() if v["status"] != "running"]:
-                        RUNS.pop(rid, None)
-                    os.makedirs(RUN_DATA_DIR, exist_ok=True)
-                    with open(RUNS_FILE, "w", encoding="utf-8") as fh:
-                        json.dump({}, fh)
+                clear_finished_runs()
                 return self._json({"ok": True, "runs": list_runs()})
             if act == "login":
                 return self._json(do_login(body.get("config", ""),

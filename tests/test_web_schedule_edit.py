@@ -2,6 +2,7 @@
 """网页控制台：定时任务修改 + 运行实例开始时间的回归测试。"""
 import json
 import shutil
+import subprocess
 import uuid
 from pathlib import Path
 
@@ -151,13 +152,14 @@ def test_run_panels_render_started_time():
     source = APP_JS.read_text(encoding="utf-8")
     assert "function fmtTs(" in source
     # 实例列表带"开始/结束"时间
-    assert "开始 ${fmtTs(r.started)}" in source
-    assert "结束 ' + fmtTs(r.ended)" in source
+    assert "开始 ${fmtRunTime(r.started)}" in source
+    assert "结束 ' + fmtRunTime(r.ended)" in source
     # 输出面板标题也带开始时间
     assert "function setOutputTitle(" in source
-    assert "开始 ' + fmtTs(run.started)" in source
-    # 运行实例监控按本地日期分组，新的日期在上
+    assert "开始 ' + fmtRunTime(run.started)" in source
+    # 运行实例监控按服务端日期分组，新的日期在上
     assert "function groupRunsByDate(" in source
+    assert "function runGroupKey(" in source
     assert "return ak < bk ? 1 : -1;" in source
     assert "groupRunsByDate(R.runs)" in source
     html = INDEX_HTML.read_text(encoding="utf-8")
@@ -167,6 +169,54 @@ def test_run_panels_render_started_time():
     assert "is-folded" in source
     assert ".rungroup-h" in html
     assert ".rungroup.is-folded .rungroup-caret" in html
+
+
+def test_run_list_uses_server_timezone_for_group_label_and_row():
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is required to execute the run list JavaScript")
+    script = """
+    process.env.TZ = 'UTC';
+    const assert = require('node:assert/strict');
+    const fs = require('node:fs');
+    const vm = require('node:vm');
+    const source = fs.readFileSync(process.argv[1], 'utf8');
+    const formatters = source.slice(source.indexOf('function fmtTs('), source.indexOf('function log('));
+    const runList = source.slice(source.indexOf('function fmtRunTime('), source.indexOf('function viewRun('));
+    const box = { scrollTop: 0 };
+    const title = {};
+    const started = Date.parse('2026-11-19T17:00:00Z') / 1000;
+    const run = { id: 'r1', day: '2026-11-20', started, ended: started + 60 };
+    const context = vm.createContext({
+      assert,
+      box,
+      title,
+      R: { foldedDates: new Set() },
+      $: id => id === 'rList' ? box : title,
+      api: async () => ({ runs: [run], time_zone: { offset_minutes: 480 } }),
+    });
+    const test = `
+      const OriginalDate = Date;
+      Date = class extends OriginalDate {
+        constructor(...args) { super(...(args.length ? args : ['2026-11-19T18:00:00Z'])); }
+        static now() { return OriginalDate.parse('2026-11-19T18:00:00Z'); }
+      };
+      (async () => {
+        await loadRuns();
+        setOutputTitle('r1');
+        assert.match(box.innerHTML, /今天 · 2026-11-20 周五/);
+        assert.match(box.innerHTML, /开始 2026-11-20 01:00:00/);
+        assert.match(box.innerHTML, /结束 2026-11-20 01:01:00/);
+        assert.match(title.textContent, /开始 2026-11-20 01:00:00/);
+      })();
+    `;
+    vm.runInContext(formatters + runList + test, context).catch(error => {
+      console.error(error);
+      process.exitCode = 1;
+    });
+    """
+    result = subprocess.run([node, "-e", script, str(APP_JS)], capture_output=True, encoding="utf-8")
+    assert result.returncode == 0, result.stderr
 
 
 def test_schedule_page_supports_editing_saved_tasks():

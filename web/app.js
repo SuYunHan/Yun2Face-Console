@@ -676,7 +676,7 @@ function switchTab(which) {
 const R = { runs: [], cfg: null, cur: null, since: 0, timer: null,
             configs: [], projects: [], photos: [],
             project: null, folder: '', taskFile: '',
-            foldedDates: new Set() };
+            foldedDates: new Set(), timeZoneOffset: null };
 
 async function loadRunOptions() {
   try {
@@ -1183,33 +1183,35 @@ async function startRun() {
   } catch (e) { alert('启动失败：' + e.message); }
 }
 
-/* 运行实例按开始时间的本地日期分组。日期新的在上，同一天内开始时间新的在上。
-   日期键与 fmtTs 使用同一套本地日历，列表标题和「开始」时间不会差一天。 */
-function runLocalDateKey(ts) {
-  if (ts === null || ts === undefined || ts === '') return '';
-  const d = new Date(Number(ts) * 1000);
-  if (isNaN(d.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/* 运行实例的日期和时间使用服务端时区，兼容未声明时区的旧版服务。 */
+function fmtRunTime(ts) {
+  return R.timeZoneOffset === null ? fmtTs(ts) : fmtTsIn(ts, R.timeZoneOffset);
 }
 
 function runDateLabel(key) {
   if (!key) return '未知日期';
-  const pad = (n) => String(n).padStart(2, '0');
-  const now = new Date();
-  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const yesterday = `${yest.getFullYear()}-${pad(yest.getMonth() + 1)}-${pad(yest.getDate())}`;
-  const [yy, mm, dd] = key.split('-').map(Number);
-  const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(yy, (mm || 1) - 1, dd || 1).getDay()];
+  const today = fmtRunTime(Date.now() / 1000).slice(0, 10);
+  const previous = new Date(today + 'T00:00:00Z');
+  previous.setUTCDate(previous.getUTCDate() - 1);
+  const yesterday = previous.toISOString().slice(0, 10);
+  const dayOfWeek = new Date(key + 'T00:00:00Z').getUTCDay();
+  const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][dayOfWeek];
   const rel = key === today ? '今天 · ' : (key === yesterday ? '昨天 · ' : '');
   return `${rel}${key} ${week}`;
 }
 
+/* 分组日期优先用服务端的 day。 */
+function runGroupKey(r) {
+  const day = r && typeof r.day === 'string' ? r.day.trim() : '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) return day;
+  const started = fmtRunTime(r && r.started);
+  return started === '—' ? '' : started.slice(0, 10);
+}
+
 function groupRunsByDate(runs) {
   const list = (Array.isArray(runs) ? runs : []).slice().sort((a, b) => {
-    const ak = runLocalDateKey(a && a.started);
-    const bk = runLocalDateKey(b && b.started);
+    const ak = runGroupKey(a);
+    const bk = runGroupKey(b);
     if (ak !== bk) {
       if (!ak) return 1;
       if (!bk) return -1;
@@ -1222,7 +1224,7 @@ function groupRunsByDate(runs) {
   });
   const groups = [];
   for (const r of list) {
-    const key = runLocalDateKey(r && r.started);
+    const key = runGroupKey(r);
     const last = groups[groups.length - 1];
     if (!last || last.key !== key) groups.push({ key, label: runDateLabel(key), runs: [r] });
     else last.runs.push(r);
@@ -1265,7 +1267,7 @@ function renderRunList() {
         <div>${r.id}　<span class="meta">${r.mode === 'dry' ? '离线演练' : '真实运行'}</span></div>
         <div class="meta">${r.project || ''} · ${r.task_folder || '?'}/${r.task_file || '随机'}
           · ${r.elapsed}s${r.returncode !== null ? ' · 退出码 ' + r.returncode : ''}</div>
-        <div class="meta">开始 ${fmtTs(r.started)}${r.ended ? ' · 结束 ' + fmtTs(r.ended) : ''}</div>
+        <div class="meta">开始 ${fmtRunTime(r.started)}${r.ended ? ' · 结束 ' + fmtRunTime(r.ended) : ''}</div>
       </div>
       ${r.status === 'running'
         ? `<button class="danger" onclick="event.stopPropagation();stopRun('${r.id}')">停止</button>`
@@ -1280,6 +1282,8 @@ function renderRunList() {
 async function loadRuns() {
   const j = await api('/api/runs');
   R.runs = j.runs;
+  const offset = j.time_zone?.offset_minutes;
+  R.timeZoneOffset = Number.isInteger(offset) ? offset : null;
   renderRunList();
   if (R.cur) {
     const cur = R.runs.find(r => r.id === R.cur);
@@ -1296,7 +1300,7 @@ function statusLabel(r) {
 function setOutputTitle(id) {
   const run = R.runs.find(r => r.id === id);
   $('rOutTitle').textContent = '（' + id
-    + (run && run.started ? ' · 开始 ' + fmtTs(run.started) : '') + '）';
+    + (run && run.started ? ' · 开始 ' + fmtRunTime(run.started) : '') + '）';
 }
 
 function viewRun(id) {
@@ -1345,8 +1349,12 @@ async function stopRun(id) {
 }
 
 async function clearRuns() {
-  await api('/api/runs', { action: 'clear' });
-  log('已清理结束的实例记录');
+  try {
+    await api('/api/runs', { action: 'clear' });
+    log('已清理结束的实例记录');
+  } catch (error) {
+    log('清理实例记录失败：' + error.message, 'err');
+  }
   await loadRuns();
 }
 
