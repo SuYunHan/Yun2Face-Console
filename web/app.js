@@ -675,7 +675,8 @@ function switchTab(which) {
 /* ================================================================ 运行控制 */
 const R = { runs: [], cfg: null, cur: null, since: 0, timer: null,
             configs: [], projects: [], photos: [],
-            project: null, folder: '', taskFile: '' };
+            project: null, folder: '', taskFile: '',
+            foldedDates: new Set() };
 
 async function loadRunOptions() {
   try {
@@ -1182,15 +1183,82 @@ async function startRun() {
   } catch (e) { alert('启动失败：' + e.message); }
 }
 
-async function loadRuns() {
-  const j = await api('/api/runs');
-  R.runs = j.runs;
+/* 运行实例按开始时间的本地日期分组。日期新的在上，同一天内开始时间新的在上。
+   日期键与 fmtTs 使用同一套本地日历，列表标题和「开始」时间不会差一天。 */
+function runLocalDateKey(ts) {
+  if (ts === null || ts === undefined || ts === '') return '';
+  const d = new Date(Number(ts) * 1000);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function runDateLabel(key) {
+  if (!key) return '未知日期';
+  const pad = (n) => String(n).padStart(2, '0');
+  const now = new Date();
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yesterday = `${yest.getFullYear()}-${pad(yest.getMonth() + 1)}-${pad(yest.getDate())}`;
+  const [yy, mm, dd] = key.split('-').map(Number);
+  const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(yy, (mm || 1) - 1, dd || 1).getDay()];
+  const rel = key === today ? '今天 · ' : (key === yesterday ? '昨天 · ' : '');
+  return `${rel}${key} ${week}`;
+}
+
+function groupRunsByDate(runs) {
+  const list = (Array.isArray(runs) ? runs : []).slice().sort((a, b) => {
+    const ak = runLocalDateKey(a && a.started);
+    const bk = runLocalDateKey(b && b.started);
+    if (ak !== bk) {
+      if (!ak) return 1;
+      if (!bk) return -1;
+      return ak < bk ? 1 : -1;
+    }
+    const as = Number(a && a.started);
+    const bs = Number(b && b.started);
+    if (Number.isFinite(as) && Number.isFinite(bs) && as !== bs) return bs - as;
+    return String((b && b.id) || '').localeCompare(String((a && a.id) || ''), undefined, { numeric: true });
+  });
+  const groups = [];
+  for (const r of list) {
+    const key = runLocalDateKey(r && r.started);
+    const last = groups[groups.length - 1];
+    if (!last || last.key !== key) groups.push({ key, label: runDateLabel(key), runs: [r] });
+    else last.runs.push(r);
+  }
+  return groups;
+}
+
+function toggleRunGroup(key) {
+  const k = String(key || '');
+  if (R.foldedDates.has(k)) R.foldedDates.delete(k);
+  else R.foldedDates.add(k);
+  renderRunList();
+}
+
+function renderRunList() {
   const box = $('rList');
-  if (!R.runs.length) {
+  if (!box) return;
+  const scroll = box.scrollTop;
+  if (!R.runs || !R.runs.length) {
     box.innerHTML = '<div class="hint">还没有运行过。左边选好配置与任务表，点『启动』。</div>';
     return;
   }
-  box.innerHTML = R.runs.map(r => `
+  box.innerHTML = groupRunsByDate(R.runs).map(g => {
+    const folded = R.foldedDates.has(g.key);
+    const domId = 'rungroup-' + (g.key || 'unknown');
+    return `
+    <section class="rungroup${folded ? ' is-folded' : ''}">
+      <h5 class="rungroup-h">
+        <button type="button" class="rungroup-toggle" aria-expanded="${folded ? 'false' : 'true'}" aria-controls="${domId}" onclick="toggleRunGroup('${g.key}')">
+          <span class="rungroup-caret" aria-hidden="true"></span>
+          <span>${g.label}</span>
+          <span class="count">${g.runs.length} 条</span>
+        </button>
+      </h5>
+      <div class="rungroup-body" id="${domId}"${folded ? ' hidden' : ''}>
+      ${g.runs.map(r => `
     <div class="runitem ${r.id === R.cur ? 'active' : ''}" onclick="viewRun('${r.id}')">
       <span class="st st-${r.status}">${statusLabel(r)}</span>
       <div style="flex:1">
@@ -1202,7 +1270,17 @@ async function loadRuns() {
       ${r.status === 'running'
         ? `<button class="danger" onclick="event.stopPropagation();stopRun('${r.id}')">停止</button>`
         : ''}
-    </div>`).join('');
+    </div>`).join('')}
+      </div>
+    </section>`;
+  }).join('');
+  box.scrollTop = scroll;
+}
+
+async function loadRuns() {
+  const j = await api('/api/runs');
+  R.runs = j.runs;
+  renderRunList();
   if (R.cur) {
     const cur = R.runs.find(r => r.id === R.cur);
     if (cur && cur.status !== 'running') stopPolling();

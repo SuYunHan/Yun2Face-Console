@@ -156,6 +156,17 @@ def test_run_panels_render_started_time():
     # 输出面板标题也带开始时间
     assert "function setOutputTitle(" in source
     assert "开始 ' + fmtTs(run.started)" in source
+    # 运行实例监控按本地日期分组，新的日期在上
+    assert "function groupRunsByDate(" in source
+    assert "return ak < bk ? 1 : -1;" in source
+    assert "groupRunsByDate(R.runs)" in source
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    assert 'class="rungroup-h"' in source
+    assert "function toggleRunGroup(" in source
+    assert "foldedDates" in source
+    assert "is-folded" in source
+    assert ".rungroup-h" in html
+    assert ".rungroup.is-folded .rungroup-caret" in html
 
 
 def test_schedule_page_supports_editing_saved_tasks():
