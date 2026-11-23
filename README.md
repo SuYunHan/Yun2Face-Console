@@ -4,7 +4,7 @@
 
 > 本仓库由 [Zirconium233/yunForNewVersion](https://github.com/Zirconium233/yunForNewVersion) 修改而来：协议实现与规则沿用上游，本地面板 / 定时任务 / 任务表工具为本仓库新增；配置与任务表已按**安徽邮电职业技术学院**整理，更适合安邮宝宝体质。
 
-控制台只在本机运行（默认 `127.0.0.1:8765`），浏览器里完成照片标注与预检、任务表校验与派生、一键启动 `main.py` 并查看实时日志；不想开网页时也可以直接用命令行。
+控制台默认在本机运行。浏览器访问 `127.0.0.1:8000` 的前端，前端向 `127.0.0.1:8765` 的 Flask API 请求数据。也可以直接使用命令行工具。
 
 > ⚠️ 仅用于学习与自查接口行为，请遵守所在学校的规定。任何字段对齐都不构成"绕过"承诺——服务端还有行为/数据层面的分析（配速分布、请求节奏、TLS/HTTP 指纹等），也不保证任何账号能通过校验。
 
@@ -12,7 +12,7 @@
 
 ## 功能一览
 
-网页控制台（`web_app.py` + `web/`，原生 JS 无构建步骤，支持浅色/深色模式一键切换）共 9 个页签：
+网页控制台由 `web/` 中的原生 HTML/JS 前端和 `web_app.py` 中的 Flask API 组成。前端无需构建，支持浅色和深色主题，共 9 个页签：
 
 | 页签 | 功能 |
 |---|---|
@@ -40,7 +40,7 @@
 
 - **Python 3.9+**（开发验证于 3.11，线上部署验证于 3.12）
 - Windows / Linux 均可；Windows 下用 `.venv` 或系统 Python 都可以，Linux 建议 venv + systemd
-- 依赖见 `requirements.txt`：`requests`、`gmssl==3.2.2`（**不要替换版本**）、`tqdm`、`schedule`、`mitmproxy`（仅抓包脚本用）、`pycryptodome`、`pillow`、`numpy`、`opencv-python-headless`
+- 依赖见 `requirements.txt`。网页后端使用 Flask、Werkzeug 和 Waitress，其他依赖包括 `requests`、`gmssl==3.2.2`（**不要替换版本**）、`tqdm`、`schedule`、`mitmproxy`（仅抓包脚本用）、`pycryptodome`、`pillow`、`numpy`、`opencv-python-headless`
 - `opencv`/`numpy` 用于网页端 **YuNet 自动检测** 与视频抽帧；不装也能跑基础预检，只是不能自动生成标注
 
 ## 安装
@@ -63,12 +63,23 @@ pip install -r requirements-dev.txt
 
 ## 快速开始（网页控制台）
 
+安装依赖后，在项目根目录开两个终端，分别启动 API 和前端。
+
 ```bash
-python web_app.py                 # 默认 127.0.0.1:8765，自动打开浏览器
-python web_app.py --port 9000 --no-browser
+# 终端 1：Flask JSON API 与定时调度器
+python web_app.py
+
+# 终端 2：独立静态前端
+python -m http.server 8000 --bind 127.0.0.1 --directory web
 ```
 
-首次启动会在项目根目录自动创建/使用这些目录：
+浏览器打开 [控制台](http://127.0.0.1:8000)。访问 [配置接口](http://127.0.0.1:8765/api/config) 可检查后端。页签可用 `?tab=task` 等链接直接打开，浏览器前进和后退会恢复对应页签。
+
+自定义端口或分开部署时，在 [`web/api-config.js`](web/api-config.js) 中将 `window.YUN_API_BASE_URL` 设为 API 的完整来源（例如 `http://127.0.0.1:9000`）。跨源访问时，启动后端需加 `--frontend-origin http://127.0.0.1:8000`，可重复指定多个前端来源。线上可由同一个站点托管静态文件并代理 `/api/`，将 API 地址设为空字符串。部署示例见 [systemd 与 Nginx](deploy/README.md)。
+
+现有 `/api/…` 数据接口保留原路径。原图、缩略图和参考线预览统一通过 `GET /api/media/{file|thumb|preview}/{学号}/{文件名}` 获取，响应包含 `mime_type` 和 Base64 编码的 `data`。
+
+API 首次启动会在项目根目录创建或使用以下目录：
 
 ```
 students_cofig/<学号>/config.ini     # 每个学号的账号配置
@@ -214,9 +225,9 @@ python live_probe.py <raRunArea>            # 准入探测（0=Y 2=缺主机 3=�
 
 ```
 Yun2Face-Console/
-├─ web_app.py              # 网页控制台后端（HTTP API + 运行管理 + 定时调度）
+├─ web_app.py              # Flask JSON API、运行管理与定时调度
 ├─ account_context.py       # 账号级配置 / API 客户端 / HTTP Session 隔离边界
-├─ web/                    # 网页前端（index.html / app.js，无构建）
+├─ web/                    # 独立静态前端（index.html / app.js / api-config.js）
 ├─ web_shared.py           # Web 共享服务层（路线合成预览、校区与底图检索、配置脱敏）
 ├─ main.py                 # 命令行主流程
 ├─ yun_http.py             # 请求构造 / SM2/SM4 / 响应解码 / 续期钩子
@@ -279,7 +290,7 @@ sudo systemctl status yunfornewversion-web.service
 sudo journalctl -u yunfornewversion-web.service -f
 ```
 
-服务默认监听 `127.0.0.1:8765`（前面可以放 Nginx 反向代理），并同时启动内置的每日定时调度器；网页里的运行日志仍写在 `web_data/runs`。详见 [`deploy/README.md`](deploy/README.md)。
+systemd 服务在 `127.0.0.1:8765` 运行 Flask API 和定时调度器。Nginx 从 `web/` 提供静态页面，并将 `/api/` 请求转发给后端。运行日志写入 `web_data/runs`。配置示例见 [部署文档](deploy/README.md)。
 
 ## 常见问题
 
@@ -325,6 +336,10 @@ sudo journalctl -u yunfornewversion-web.service -f
 ## 更新日志
 
 - **2026-11-23**
+  - **网页前端与 Flask JSON API 独立运行**
+    - `web/` 可由静态服务器单独托管。九个页签支持直接链接和浏览器前进、后退。
+    - Flask 保留业务接口，并通过 `/api/media/` 以 JSON 返回原图、缩略图和参考线预览。
+    - 本地启动分为前端和后端两个进程。线上可用 Nginx 托管页面并代理 API。
   - **运行实例日志按月分目录、按天分文件**
     - 每条日志按定时时区的开始日期归档到 `web_data/runs/<年-月>/<年-月-日>.json`。缺少开始时间的记录归入 `unknown/unknown.json`。
     - 启动时自动拆分旧的 `runs.json`，全部写入成功后才移除原文件。迁移失败会保留原文件并中止启动。

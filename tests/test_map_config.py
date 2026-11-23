@@ -123,27 +123,18 @@ def test_map_layer_types_ui_and_logic():
     assert "World_Imagery" in app_js
 
 
-def test_web_app_map_config_api_endpoints():
-    class DummyHandler(web_app.Handler):
-        def __init__(self):
-            self.sent_json = None
-            self.sent_err = None
-        def _json(self, data, code=200):
-            self.sent_json = data
-            return data
-        def _err(self, msg, code=400):
-            self.sent_err = (msg, code)
-            return msg
-
-    h = DummyHandler()
-    res_get = h._api_get("/api/map-config", {})
+def test_web_app_map_config_api_endpoints(tmp_path, monkeypatch):
+    monkeypatch.setattr(web_app, "HERE", str(tmp_path))
+    client = web_app.app.test_client()
+    res_get = client.get("/api/map-config").json
     assert res_get["ok"] is True
     assert "provider" in res_get["config"]
     assert "map_type" in res_get["config"]
 
-    res_post = h._api_post("/api/map-config", {"config": {"provider": "osm", "map_type": "topo"}})
+    res_post = client.post("/api/map-config", json={"config": {"provider": "osm", "map_type": "topo"}}).json
     assert res_post["ok"] is True
     assert res_post["config"]["provider"] == "osm"
     assert res_post["config"]["map_type"] == "topo"
+    assert client.get("/api/map-config").json["config"]["map_type"] == "topo"
 
 

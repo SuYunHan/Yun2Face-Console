@@ -6,7 +6,6 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from itertools import count
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -215,6 +214,5 @@ def test_late_persist_does_not_restore_cleared_record(run_store):
 
 def test_run_list_api_exposes_grouping_timezone(run_store, monkeypatch):
     monkeypatch.setattr(web_app, "SCHEDULE_TZ_OFFSET_MIN", 480)
-    handler = SimpleNamespace(_json=lambda data: data)
-    data = web_app.Handler._api_get(handler, "/api/runs", {})
+    data = web_app.app.test_client().get("/api/runs").json
     assert data.get("time_zone", {}).get("offset_minutes") == 480

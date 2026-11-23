@@ -1,12 +1,12 @@
 [Unit]
-Description=yunForNewVersion web console and scheduler
+Description=yunForNewVersion JSON API and scheduler
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/yunForNewVersion
-ExecStart=/usr/bin/python3.12 /opt/yunForNewVersion/web_app.py --host 0.0.0.0 --port 8765 --no-browser
+ExecStart=/usr/bin/python3.12 /opt/yunForNewVersion/web_app.py --host 127.0.0.1 --port 8765
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1

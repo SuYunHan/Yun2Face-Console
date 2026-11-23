@@ -7,4 +7,7 @@ pycryptodome
 pillow  # 人脸输入适配 yun_face（图像解码/EXIF/缩放/质量阶梯）
 numpy
 opencv-python-headless
+Flask>=3.1,<4
+Werkzeug>=3.1.0
+waitress>=3.0.2,<4
 # Linux 云端使用 opencv-python-headless；视频抽帧仍可额外安装 opencv-python。

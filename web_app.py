@@ -1,24 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Yun2Face 网页控制台 —— 照片与标注的增删改查 + 一键预检。
-
-设计取舍
---------
-- **零新依赖**：只用 Python 标准库 http.server + 项目已有的 Pillow/opencv。
-  网页端是原生 JS，没有构建步骤、没有 node_modules。
-- **只监听 127.0.0.1**：这是本机工具，不做对外服务；所有写操作都限制在
-  `--photos` / `--annos` 两个数据目录内，并做文件名白名单校验（防目录穿越）。
-- **复用同一套规则**：预检调用 face_check.check_photo（其规则来自 core/rules.py），
-  不在网页层重新实现任何阈值。
-- **是否重构路径布局**：不改。数据仍按项目要求的 `<root>/<学号>/<文件名>` 放置，
-  所以网页里改完的标注可以直接给项目用。
-
-启动：
-    python web_app.py                 # 默认 8765，自动打开浏览器
-    python web_app.py --port 9000 --no-browser
-"""
+"""Yun2Face JSON API and scheduler. The browser console is hosted from web/."""
 from __future__ import annotations
 
 import argparse
+import base64
 import configparser
 import glob
 import hashlib
@@ -27,19 +12,14 @@ import itertools
 import json
 import mimetypes
 import os
-import posixpath
 import random
 import re
-import socket
 import subprocess
 import sys
 import threading
 import time
 import traceback
-import urllib.parse
-import webbrowser
 from datetime import date, datetime, timedelta, timezone
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -55,9 +35,10 @@ import face_check  # noqa: E402
 import task_tools  # noqa: E402
 import web_shared as route_web  # noqa: E402
 from account_context import AccountContext  # noqa: E402
+from flask import Flask, jsonify, request  # noqa: E402
 from PIL import Image  # noqa: E402
+from werkzeug.exceptions import BadRequest, HTTPException  # noqa: E402
 
-WEB_DIR = os.path.join(HERE, "web")
 CACHE_DIR = os.path.join(HERE, "out", "web_cache")
 PHOTO_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 # 学号/目录名：不含点号，避免出现类似 ".." 的段
@@ -1917,609 +1898,654 @@ def save_control_config(payload: dict, student: str = "") -> None:
 
 
 # ---------------------------------------------------------------- HTTP
-class Handler(BaseHTTPRequestHandler):
-    server_version = "Yun2FaceWeb/1.0"
+DEFAULT_FRONTEND_ORIGINS = ("http://127.0.0.1:8000", "http://localhost:8000")
 
-    def log_message(self, fmt, *args):   # 静音默认访问日志，只留错误
-        if args and str(args[1]).startswith(("4", "5")):
-            sys.stderr.write("  [http] " + (fmt % args) + "\n")
+app = Flask(__name__, static_folder=None)
+app.url_map.merge_slashes = False
+app.json.ensure_ascii = False
+app.json.sort_keys = False
+app.config["FRONTEND_ORIGINS"] = DEFAULT_FRONTEND_ORIGINS
 
-    # ---- 响应助手 ----
-    def _json(self, obj, code=200):
-        body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(body)
 
-    def _bytes(self, data: bytes, ctype="image/jpeg", code=200, cache=False):
-        self.send_response(code)
-        self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "public, max-age=3600" if cache else "no-store")
-        self.end_headers()
-        self.wfile.write(data)
+def _err(message, code=400):
+    return jsonify(ok=False, error=str(message)), code
 
-    def _err(self, msg, code=400):
-        self._json({"ok": False, "error": str(msg)}, code)
 
-    def _body_json(self) -> dict:
-        n = int(self.headers.get("Content-Length") or 0)
-        if n <= 0:
-            return {}
-        return json.loads(self.rfile.read(n).decode("utf-8"))
+@app.errorhandler(HTTPException)
+def _http_error(exc):
+    response = exc.get_response()
+    response.set_data(app.json.dumps({"ok": False, "error": exc.description}))
+    response.mimetype = "application/json"
+    return response
 
-    # ---- 路由 ----
-    def do_GET(self):   # noqa: N802
-        u = urllib.parse.urlparse(self.path)
-        q = urllib.parse.parse_qs(u.query)
-        path = u.path
+
+@app.errorhandler(ValueError)
+def _invalid_value(exc):
+    return _err(exc)
+
+
+@app.errorhandler(FileNotFoundError)
+def _missing_file(exc):
+    return _err(f"文件不存在: {exc}", 404)
+
+
+@app.after_request
+def _api_headers(response):
+    response.cache_control.no_store = True
+    response.vary.add("Origin")
+    allowed_methods = response.headers.get("Allow")
+    if request.method == "OPTIONS" and allowed_methods and response.status_code == 200:
+        response.status_code = 204
+        response.headers.pop("Content-Type", None)
+    origin = request.headers.get("Origin")
+    if origin in app.config["FRONTEND_ORIGINS"]:
+        response.access_control_allow_origin = origin
+        if request.method == "OPTIONS" and allowed_methods:
+            response.headers["Access-Control-Allow-Methods"] = allowed_methods
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
+def _request_json():
+    body = request.get_json()
+    if not isinstance(body, dict):
+        raise BadRequest("请求体必须是 JSON 对象")
+    return body
+
+
+@app.get("/api/history/terms")
+def api_get_history_terms():
+    student = request.args.get("student", "")
+    try:
+        return jsonify({"ok": True, "student": student, "terms": history_terms(student)})
+    except Exception as exc:
+        return _err(f"获取学期失败：{type(exc).__name__}: {exc}", 502)
+
+
+@app.get("/api/history/runs")
+def api_get_history_runs():
+    student = request.args.get("student", "")
+    table = request.args.get("table", "")
+    try:
+        return jsonify(ok=True, student=student, table=table, runs=history_runs(student, table))
+    except Exception as exc:
+        return _err(f"获取历史记录失败：{type(exc).__name__}: {exc}", 502)
+
+
+@app.get("/api/history/detail")
+def api_get_history_detail():
+    student = request.args.get("student", "")
+    table = request.args.get("table", "")
+    record_id = request.args.get("id", "")
+    try:
+        return jsonify({"ok": True, **history_detail(student, table, record_id)})
+    except Exception as exc:
+        return _err(f"获取历史详情失败：{type(exc).__name__}: {exc}", 502)
+
+
+@app.get("/api/statistics")
+def api_get_statistics():
+    student = request.args.get("student", "")
+    if not student:
+        return _err("请先选择学号", 400)
+    try:
+        return jsonify({"ok": True, **fetch_student_statistics(student)})
+    except Exception as exc:  # noqa: BLE001
+        return _err(f"统计获取失败：{type(exc).__name__}: {exc}", 502)
+
+
+@app.get("/api/control-config")
+def api_get_control_config():
+    student = request.args.get("student", "")
+    return jsonify(ok=True, student=student, path=_control_config_path(student),
+                   config=control_config(student))
+
+
+@app.get("/api/map-config")
+def api_get_map_config():
+    return jsonify({"ok": True, "config": route_web.get_map_config(HERE)})
+
+
+@app.get("/api/route-meta")
+def api_get_route_meta():
+    return jsonify({"ok": True, **route_meta()})
+
+
+@app.get("/api/routes")
+def api_get_routes():
+    try:
+        query = {key: [value for value in values if value]
+                 for key, values in request.args.lists()}
+        out = route_preview(query)
+    except Exception as exc:  # noqa: BLE001
+        out = {"error": f"{type(exc).__name__}: {exc}"}
+    if out.get("error"):
+        route_web._set_plan({})
+    else:
+        route_web._set_plan(out.get("command") or {})
+    return jsonify(out)
+
+
+@app.get("/api/config")
+def api_get_config():
+    return jsonify(ok=True, photos=CFG["photos"], annos=CFG["annos"],
+                   tasks=CFG["tasks"], project_tasks=CFG.get("project_tasks"),
+                   split_count=CFG["split_count"], strides=CFG["strides"],
+                   detect_available=face_check.detect_available(), thresholds=core.THRESHOLDS,
+                   max_bytes=core.MAX_BYTES, max_width=core.MAX_WIDTH)
+
+
+@app.get("/api/students")
+def api_get_students():
+    return jsonify({"ok": True, "students": list_students()})
+
+
+@app.get("/api/tasks")
+def api_get_tasks():
+    # 兼容两种用法：
+    #   不带 project → 旧的全局任务表库（--tasks）
+    #   带 project [+folder] → 某个学号项目自己的 tasks_* 目录
+    proj = request.args.get("project", "")
+    folder = request.args.get("folder", "")
+    if proj:
+        tasks = list_tasks_for(proj, folder)
+        return jsonify(ok=True, project=proj, folder=folder, tasks=tasks,
+                       groups=_group_tasks_summary(tasks),
+                       split_count=CFG["split_count"], strides=CFG["strides"])
+    tasks = list_tasks()
+    return jsonify(ok=True, dir=CFG["tasks"], tasks=tasks, groups=_group_tasks_summary(tasks),
+                   split_count=CFG["split_count"], strides=CFG["strides"])
+
+
+@app.get("/api/projects")
+def api_get_projects():
+    return jsonify(ok=True, root=CFG["projects_root"], projects=discover_projects())
+
+
+@app.get("/api/runs")
+def api_get_runs():
+    return jsonify({"ok": True, "runs": list_runs(), "time_zone": schedule_timezone_info()})
+
+
+@app.get("/api/schedules")
+def api_get_schedules():
+    return jsonify(ok=True, schedules=list_schedules(), time_zone=schedule_timezone_info())
+
+
+@app.get("/api/run")
+def api_get_run():
+    rid = request.args.get("id", "")
+    since = int(request.args.get("since") or "0")
+    return jsonify({"ok": True, **run_view(rid, since)})
+
+
+@app.get("/api/configs")
+def api_get_configs():
+    return jsonify(ok=True, configs=list_configs(), project=CFG["project"],
+                   python=_python_exe(), dry_home=CFG["dry_home"],
+                   dry_home_exists=os.path.isfile(CFG["dry_home"]))
+
+
+@app.get("/api/task")
+def api_get_task():
+    name = request.args.get("name", "")
+    return jsonify({"ok": True, **task_detail(name)})
+
+
+@app.get("/api/images")
+def api_get_images():
+    stu = request.args.get("student", "")
+    return jsonify({"ok": True, "student": stu, "images": _list_images(stu)})
+
+
+@app.get("/api/annotation")
+def api_get_annotation():
+    stu, stem = request.args.get("student", ""), request.args.get("stem", "")
+    ap = anno_path(stu, stem)
+    if not os.path.isfile(ap):
+        return jsonify({"ok": True, "exists": False})
+    with open(ap, "r", encoding="utf-8") as fh:
+        d = json.load(fh)
+    p = None
+    for ext in PHOTO_EXT:
+        cand = os.path.join(CFG["photos"], _safe_name(stu), stem + ext)
+        if os.path.isfile(cand):
+            p = cand
+            break
+    size = None
+    if p:
+        with Image.open(p) as im:
+            size = list(im.size)
+    return jsonify(ok=True, exists=True, annotation=d, path=ap, photo_size=size)
+
+
+@app.post("/api/control-config")
+def api_post_control_config():
+    body = _request_json()
+    try:
+        student = str(body.get("student") or "")
+        save_control_config(body.get("config") or {}, student)
+        return jsonify(ok=True, student=student, path=_control_config_path(student))
+    except Exception as exc:  # noqa: BLE001
+        return _err(str(exc))
+
+
+@app.post("/api/map-config")
+def api_post_map_config():
+    body = _request_json()
+    try:
+        payload = body.get("config") if isinstance(body.get("config"), dict) else body
+        cfg = route_web.save_map_config(payload or {}, HERE)
+        return jsonify({"ok": True, "config": cfg})
+    except Exception as exc:  # noqa: BLE001
+        return _err(str(exc))
+
+
+@app.post("/api/history/save")
+def api_post_history_save():
+    body = _request_json()
+    try:
+        result = save_history_record(
+            str(body.get("student") or ""), body.get("record") or {}, str(body.get("filename") or "")
+        )
+        return jsonify({"ok": True, **result})
+    except Exception as exc:
+        return _err(str(exc))
+
+
+@app.post("/api/runs")
+def api_post_runs():
+    body = _request_json()
+    act = body.get("action")
+    if act == "start":
         try:
-            if path.startswith("/api/"):
-                return self._api_get(path, q)
-            if path.startswith("/file/") or path.startswith("/thumb/") or path.startswith("/preview/"):
-                return self._media(path, q)
-            return self._static(path)
+            return jsonify({"ok": True, **start_run(body)})
         except ValueError as exc:
-            self._err(exc, 400)
-        except FileNotFoundError as exc:
-            self._err(f"文件不存在: {exc}", 404)
-        except Exception as exc:  # noqa: BLE001
-            traceback.print_exc()
-            self._err(f"{type(exc).__name__}: {exc}", 500)
+            return _err(str(exc))
+    if act == "stop":
+        result = stop_run(body.get("id", ""), force=bool(body.get("force")))
+        return jsonify({"ok": True, **result})
+    if act == "clear":
+        clear_finished_runs()
+        return jsonify({"ok": True, "runs": list_runs()})
+    if act == "login":
+        return jsonify(do_login(body.get("config", ""), save_token=bool(body.get("save_token"))))
+    return _err("未知 runs 动作")
 
-    def do_POST(self):  # noqa: N802
-        u = urllib.parse.urlparse(self.path)
+
+@app.post("/api/schedules")
+def api_post_schedules():
+    body = _request_json()
+    act = body.get("action")
+    if act == "create":
         try:
-            body = self._body_json()
-        except Exception as exc:  # noqa: BLE001
-            return self._err(f"请求体不是合法 JSON: {exc}", 400)
-        try:
-            return self._api_post(u.path, body)
+            item = create_schedule(body)
         except ValueError as exc:
-            self._err(exc, 400)
-        except FileNotFoundError as exc:
-            self._err(f"文件不存在: {exc}", 404)
-        except Exception as exc:  # noqa: BLE001
-            traceback.print_exc()
-            self._err(f"{type(exc).__name__}: {exc}", 500)
+            return _err(str(exc))
+        return jsonify({"ok": True, "schedule": item})
+    if act == "update":
+        try:
+            item = update_schedule(body)
+        except KeyError:
+            return _err("定时任务不存在", 404)
+        except ValueError as exc:
+            return _err(str(exc))
+        return jsonify({"ok": True, "schedule": item})
+    if act == "toggle":
+        sid = str(body.get("id") or "")
+        try:
+            item = set_schedule_enabled(sid, bool(body.get("enabled")))
+        except KeyError:
+            return _err("定时任务不存在", 404)
+        return jsonify({"ok": True, "schedule": item})
+    if act == "delete":
+        sid = str(body.get("id") or "")
+        delete_schedule(sid)
+        return jsonify({"ok": True})
+    if act == "run_now":
+        sid = str(body.get("id") or "")
+        try:
+            result = run_schedule_now(sid)
+        except KeyError:
+            return _err("定时任务不存在", 404)
+        return jsonify({"ok": True, **result})
+    return _err("未知 schedules 动作")
 
-    # ---- API: GET ----
-    def _api_get(self, path, q):
-        if path == "/api/history/terms":
-            student = (q.get("student") or [""])[0]
-            try:
-                return self._json({"ok": True, "student": student, "terms": history_terms(student)})
-            except Exception as exc:
-                return self._err(f"获取学期失败：{type(exc).__name__}: {exc}", 502)
-        if path == "/api/history/runs":
-            student = (q.get("student") or [""])[0]
-            table = (q.get("table") or [""])[0]
-            try:
-                return self._json({"ok": True, "student": student, "table": table,
-                                   "runs": history_runs(student, table)})
-            except Exception as exc:
-                return self._err(f"获取历史记录失败：{type(exc).__name__}: {exc}", 502)
-        if path == "/api/history/detail":
-            student = (q.get("student") or [""])[0]
-            table = (q.get("table") or [""])[0]
-            record_id = (q.get("id") or [""])[0]
-            try:
-                return self._json({"ok": True, **history_detail(student, table, record_id)})
-            except Exception as exc:
-                return self._err(f"获取历史详情失败：{type(exc).__name__}: {exc}", 502)
-        if path == "/api/statistics":
-            student = (q.get("student") or [""])[0]
-            if not student:
-                return self._err("请先选择学号", 400)
-            try:
-                return self._json({"ok": True, **fetch_student_statistics(student)})
-            except Exception as exc:  # noqa: BLE001
-                return self._err(f"统计获取失败：{type(exc).__name__}: {exc}", 502)
-        if path == "/api/control-config":
-            student = (q.get("student") or [""])[0]
-            return self._json({"ok": True, "student": student,
-                               "path": _control_config_path(student),
-                               "config": control_config(student)})
-        if path == "/api/map-config":
-            return self._json({"ok": True, "config": route_web.get_map_config(HERE)})
-        if path == "/api/route-meta":
-            return self._json({"ok": True, **route_meta()})
-        if path == "/api/routes":
-            try:
-                out = route_preview(q)
-            except Exception as exc:  # noqa: BLE001
-                out = {"error": f"{type(exc).__name__}: {exc}"}
-            if out.get("error"):
-                route_web._set_plan({})
-            else:
-                route_web._set_plan(out.get("command") or {})
-            return self._json(out)
-        if path == "/api/config":
-            return self._json({"ok": True, "photos": CFG["photos"], "annos": CFG["annos"],
-                               "tasks": CFG["tasks"], "project_tasks": CFG.get("project_tasks"),
-                               "split_count": CFG["split_count"], "strides": CFG["strides"],
-                               "detect_available": face_check.detect_available(),
-                               "thresholds": core.THRESHOLDS,
-                               "max_bytes": core.MAX_BYTES, "max_width": core.MAX_WIDTH})
-        if path == "/api/students":
-            return self._json({"ok": True, "students": list_students()})
-        if path == "/api/tasks":
-            # 兼容两种用法：
-            #   不带 project → 旧的全局任务表库（--tasks）
-            #   带 project [+folder] → 某个学号项目自己的 tasks_* 目录
-            proj = (q.get("project") or [""])[0]
-            folder = (q.get("folder") or [""])[0]
-            if proj:
-                tasks = list_tasks_for(proj, folder)
-                return self._json({"ok": True, "project": proj, "folder": folder,
-                                   "tasks": tasks,
-                                   "groups": _group_tasks_summary(tasks),
-                                   "split_count": CFG["split_count"],
-                                   "strides": CFG["strides"]})
-            tasks = list_tasks()
-            return self._json({"ok": True, "dir": CFG["tasks"], "tasks": tasks,
-                               "groups": _group_tasks_summary(tasks),
-                               "split_count": CFG["split_count"], "strides": CFG["strides"]})
-        if path == "/api/projects":
-            return self._json({"ok": True, "root": CFG["projects_root"],
-                               "projects": discover_projects()})
-        if path == "/api/runs":
-            return self._json({"ok": True, "runs": list_runs(), "time_zone": schedule_timezone_info()})
-        if path == "/api/schedules":
-            return self._json({"ok": True, "schedules": list_schedules(),
-                               "time_zone": schedule_timezone_info()})
-        if path == "/api/run":
-            rid = (q.get("id") or [""])[0]
-            since = int((q.get("since") or ["0"])[0])
-            return self._json({"ok": True, **run_view(rid, since)})
-        if path == "/api/configs":
-            return self._json({"ok": True, "configs": list_configs(),
-                               "project": CFG["project"],
-                               "python": _python_exe(),
-                               "dry_home": CFG["dry_home"],
-                               "dry_home_exists": os.path.isfile(CFG["dry_home"])})
-        if path == "/api/task":
-            name = (q.get("name") or [""])[0]
-            return self._json({"ok": True, **task_detail(name)})
-        if path == "/api/images":
-            stu = (q.get("student") or [""])[0]
-            return self._json({"ok": True, "student": stu, "images": _list_images(stu)})
-        if path == "/api/annotation":
-            stu, stem = (q.get("student") or [""])[0], (q.get("stem") or [""])[0]
-            ap = anno_path(stu, stem)
-            if not os.path.isfile(ap):
-                return self._json({"ok": True, "exists": False})
-            with open(ap, "r", encoding="utf-8") as fh:
-                d = json.load(fh)
-            p = None
-            for ext in PHOTO_EXT:
-                cand = os.path.join(CFG["photos"], _safe_name(stu), stem + ext)
-                if os.path.isfile(cand):
-                    p = cand
-                    break
-            size = None
-            if p:
-                with Image.open(p) as im:
-                    size = list(im.size)
-            return self._json({"ok": True, "exists": True, "annotation": d,
-                               "path": ap, "photo_size": size})
-        return self._err(f"未知接口: {path}", 404)
 
-    # ---- API: POST ----
-    def _api_post(self, path, body):
-        act = body.get("action")
-        stu = body.get("student", "")
-        name = body.get("name", "")
-        stem = body.get("stem") or (os.path.splitext(name)[0] if name else "")
-
-        if path == "/api/control-config":
-            try:
-                student = str(body.get("student") or "")
-                save_control_config(body.get("config") or {}, student)
-                return self._json({"ok": True, "student": student,
-                                   "path": _control_config_path(student)})
-            except Exception as exc:  # noqa: BLE001
-                return self._err(str(exc))
-
-        if path == "/api/map-config":
-            try:
-                payload = body.get("config") if isinstance(body.get("config"), dict) else body
-                cfg = route_web.save_map_config(payload or {}, HERE)
-                return self._json({"ok": True, "config": cfg})
-            except Exception as exc:  # noqa: BLE001
-                return self._err(str(exc))
-
-        if path == "/api/history/save":
-            try:
-                result = save_history_record(str(body.get("student") or ""),
-                                             body.get("record") or {},
-                                             str(body.get("filename") or ""))
-                return self._json({"ok": True, **result})
-            except Exception as exc:
-                return self._err(str(exc))
-
-        if path == "/api/runs":
-            if act == "start":
-                try:
-                    return self._json({"ok": True, **start_run(body)})
-                except ValueError as exc:
-                    return self._err(str(exc))
-            if act == "stop":
-                return self._json({"ok": True, **stop_run(body.get("id", ""),
-                                                          force=bool(body.get("force")))})
-            if act == "clear":
-                clear_finished_runs()
-                return self._json({"ok": True, "runs": list_runs()})
-            if act == "login":
-                return self._json(do_login(body.get("config", ""),
-                                           save_token=bool(body.get("save_token"))))
-            return self._err("未知 runs 动作")
-
-        if path == "/api/schedules":
-            if act == "create":
-                try:
-                    item = create_schedule(body)
-                except ValueError as exc:
-                    return self._err(str(exc))
-                return self._json({"ok": True, "schedule": item})
-            if act == "update":
-                try:
-                    item = update_schedule(body)
-                except KeyError:
-                    return self._err("定时任务不存在", 404)
-                except ValueError as exc:
-                    return self._err(str(exc))
-                return self._json({"ok": True, "schedule": item})
-            if act == "toggle":
-                sid = str(body.get("id") or "")
-                try:
-                    item = set_schedule_enabled(sid, bool(body.get("enabled")))
-                except KeyError:
-                    return self._err("定时任务不存在", 404)
-                return self._json({"ok": True, "schedule": item})
-            if act == "delete":
-                sid = str(body.get("id") or "")
-                delete_schedule(sid)
-                return self._json({"ok": True})
-            if act == "run_now":
-                sid = str(body.get("id") or "")
-                try:
-                    result = run_schedule_now(sid)
-                except KeyError:
-                    return self._err("定时任务不存在", 404)
-                return self._json({"ok": True, **result})
-            return self._err("未知 schedules 动作")
-
-        if path == "/api/students":
-            if act == "create":
-                d = _safe_name(body.get("student", ""))
-                account_dir = os.path.join(CFG["config_root"], d)
-                config_path = os.path.join(account_dir, "config.ini")
-                if os.path.isfile(config_path):
-                    return self._err(f"学号已存在: {d}")
-                template = os.path.join(CFG["project"], "config.ini")
-                if not os.path.isfile(template):
-                    return self._err(f"主项目缺少 config.ini 模板: {template}")
+@app.post("/api/students")
+def api_post_students():
+    body = _request_json()
+    act = body.get("action")
+    if act == "create":
+        d = _safe_name(body.get("student", ""))
+        account_dir = os.path.join(CFG["config_root"], d)
+        config_path = os.path.join(account_dir, "config.ini")
+        if os.path.isfile(config_path):
+            return _err(f"学号已存在: {d}")
+        template = os.path.join(CFG["project"], "config.ini")
+        if not os.path.isfile(template):
+            return _err(f"主项目缺少 config.ini 模板: {template}")
+        import shutil
+        os.makedirs(account_dir, exist_ok=True)
+        shutil.copy2(template, config_path)
+        for root in (CFG["photos"], CFG["annos"]):
+            os.makedirs(os.path.join(root, d), exist_ok=True)
+        return jsonify({"ok": True, "student": d, "config": config_path})
+    if act == "rename":
+        old = _safe_name(body.get("student", ""))
+        new = _safe_name(body.get("new_student", ""))
+        for root in (CFG["config_root"], CFG["photos"], CFG["annos"]):
+            o, n = os.path.join(root, old), os.path.join(root, new)
+            if os.path.isdir(o):
+                if os.path.exists(n):
+                    return _err(f"目标已存在: {n}")
+                os.rename(o, n)
+        return jsonify({"ok": True, "student": new})
+    if act == "delete":
+        d = _safe_name(body.get("student", ""))
+        removed = []
+        for root in (CFG["config_root"], CFG["photos"], CFG["annos"]):
+            t = os.path.join(root, d)
+            if os.path.isdir(t):
                 import shutil
-                os.makedirs(account_dir, exist_ok=True)
-                shutil.copy2(template, config_path)
-                for root in (CFG["photos"], CFG["annos"]):
-                    os.makedirs(os.path.join(root, d), exist_ok=True)
-                return self._json({"ok": True, "student": d, "config": config_path})
-            if act == "rename":
-                old = _safe_name(body.get("student", ""))
-                new = _safe_name(body.get("new_student", ""))
-                for root in (CFG["config_root"], CFG["photos"], CFG["annos"]):
-                    o, n = os.path.join(root, old), os.path.join(root, new)
-                    if os.path.isdir(o):
-                        if os.path.exists(n):
-                            return self._err(f"目标已存在: {n}")
-                        os.rename(o, n)
-                return self._json({"ok": True, "student": new})
-            if act == "delete":
-                d = _safe_name(body.get("student", ""))
-                removed = []
-                for root in (CFG["config_root"], CFG["photos"], CFG["annos"]):
-                    t = os.path.join(root, d)
-                    if os.path.isdir(t):
-                        import shutil
-                        shutil.rmtree(t)
-                        removed.append(t)
-                return self._json({"ok": True, "removed": removed})
-            return self._err("未知 students 动作")
+                shutil.rmtree(t)
+                removed.append(t)
+        return jsonify({"ok": True, "removed": removed})
+    return _err("未知 students 动作")
 
-        if path == "/api/upload":
-            # 形如 data:image/jpeg;base64,xxxx 或纯 base64
-            import base64
-            data_url = body.get("data", "")
-            if "," in data_url and data_url.strip().startswith("data:"):
-                data_url = data_url.split(",", 1)[1]
-            raw = base64.b64decode(data_url)
-            d = _safe_name(stu)
-            fname = _safe_name(name, FILE_RE)
-            if not fname.lower().endswith(PHOTO_EXT):
-                return self._err(f"只接受图片: {PHOTO_EXT}")
-            pdir = os.path.join(CFG["photos"], d)
-            os.makedirs(pdir, exist_ok=True)
-            dst = os.path.join(pdir, fname)
-            if os.path.exists(dst) and not body.get("overwrite"):
-                return self._err(f"已存在: {fname}（勾选覆盖或改名）")
-            with open(dst, "wb") as fh:
-                fh.write(raw)
-            return self._json({"ok": True, "path": dst, "bytes": len(raw)})
 
-        if path == "/api/annotation":
-            ap = anno_path(stu, stem)
-            if act == "save":
-                ann = body.get("annotation")
-                if not isinstance(ann, dict):
-                    return self._err("annotation 必须是对象")
-                # 内容绑定：缺 source_sha256 或与照片不符时拒绝保存（不允许无主标注）
-                p = photo_path(stu, name or (stem + ".jpg"))
-                if os.path.isfile(p):
-                    sha = _sha256_file(p)
-                    if not ann.get("source_sha256"):
-                        ann["source_sha256"] = sha
-                    elif ann["source_sha256"] != sha:
-                        return self._err("source_sha256 与当前照片不符，拒绝保存"
-                                         "（请先重新检测生成标注）")
-                ann.setdefault("space", "image")
-                ann.setdefault("bind_apply", {"after_exif": True, "mirrored": False})
-                os.makedirs(os.path.dirname(ap), exist_ok=True)
-                with open(ap, "w", encoding="utf-8") as fh:
-                    json.dump(ann, fh, ensure_ascii=False, indent=2)
-                return self._json({"ok": True, "path": ap})
-            if act == "delete":
-                if os.path.isfile(ap):
-                    os.remove(ap)
-                    return self._json({"ok": True, "removed": ap})
-                return self._json({"ok": True, "removed": None})
-            if act == "drop_source_path":
-                if not os.path.isfile(ap):
-                    return self._err("标注不存在")
-                with open(ap, "r", encoding="utf-8") as fh:
-                    d = json.load(fh)
-                removed = d.pop("source_path", None)
-                with open(ap, "w", encoding="utf-8") as fh:
-                    json.dump(d, fh, ensure_ascii=False, indent=2)
-                return self._json({"ok": True, "removed": removed})
-            return self._err("未知 annotation 动作")
+@app.post("/api/upload")
+def api_post_upload():
+    body = _request_json()
+    stu = body.get("student", "")
+    name = body.get("name", "")
+    # 形如 data:image/jpeg;base64,xxxx 或纯 base64
+    data_url = body.get("data", "")
+    if "," in data_url and data_url.strip().startswith("data:"):
+        data_url = data_url.split(",", 1)[1]
+    raw = base64.b64decode(data_url)
+    d = _safe_name(stu)
+    fname = _safe_name(name, FILE_RE)
+    if not fname.lower().endswith(PHOTO_EXT):
+        return _err(f"只接受图片: {PHOTO_EXT}")
+    pdir = os.path.join(CFG["photos"], d)
+    os.makedirs(pdir, exist_ok=True)
+    dst = os.path.join(pdir, fname)
+    if os.path.exists(dst) and not body.get("overwrite"):
+        return _err(f"已存在: {fname}（勾选覆盖或改名）")
+    with open(dst, "wb") as fh:
+        fh.write(raw)
+    return jsonify({"ok": True, "path": dst, "bytes": len(raw)})
 
-        if path == "/api/photo":
-            if act == "delete":
-                p = photo_path(stu, name)
-                if os.path.isfile(p):
-                    os.remove(p)
-                ap = anno_path(stu, stem)
-                gone = os.path.isfile(ap)
-                if gone:
-                    os.remove(ap)
-                return self._json({"ok": True, "photo_removed": p,
-                                   "annotation_removed": gone})
-            if act == "rename":
-                new_name = _safe_name(body.get("new_name", ""), FILE_RE)
-                if not new_name.lower().endswith(PHOTO_EXT):
-                    return self._err(f"新文件名必须是图片: {PHOTO_EXT}")
-                p = photo_path(stu, name)
-                dst = os.path.join(CFG["photos"], _safe_name(stu), new_name)
-                if os.path.exists(dst):
-                    return self._err(f"目标已存在: {new_name}")
-                os.rename(p, dst)
-                # 标注跟着改名（内容绑定是哈希，不受影响）
-                old_ap = anno_path(stu, stem)
-                new_stem = os.path.splitext(new_name)[0]
-                if os.path.isfile(old_ap):
-                    os.rename(old_ap, anno_path(stu, new_stem))
-                return self._json({"ok": True, "name": new_name})
-            return self._err("未知 photo 动作")
 
-        if path == "/api/task":
-            name = body.get("name", "")
-            p = task_path(name)
-            if act == "set_group":
-                summary = task_tools.set_task_group(p, str(body.get("group") or ""))
-                return self._json({"ok": True, "path": p, "group": summary["group"],
-                                   "group_label": summary["group_label"],
-                                   "summary": summary})
-            if act == "validate":
-                return self._json({"ok": True, **task_tools.validate_task(
-                    p, split_count=CFG["split_count"], strides_m=CFG["strides"])})
-            if act == "copy":
-                new_name = body.get("new_name") or TASK_RE.sub("", name)
-                if not str(new_name).lower().endswith(".json"):
-                    new_name = str(new_name) + ".json"
-                dst = task_path(str(new_name))
-                if os.path.exists(dst):
-                    return self._err(f"已存在: {new_name}")
-                import shutil as _sh
-                _sh.copy2(p, dst)
-                gmap = task_tools.load_task_groups_map()
-                if os.path.basename(p) in gmap:
-                    gmap[os.path.basename(dst)] = gmap[os.path.basename(p)]
-                    task_tools.save_task_groups_map(gmap)
-                return self._json({"ok": True, "path": dst,
-                                   "summary": task_tools.task_summary(dst)})
-            if act == "rename":
-                new_name = body.get("new_name", "")
-                dst = task_path(new_name)
-                if os.path.exists(dst):
-                    return self._err(f"已存在: {new_name}")
-                os.rename(p, dst)
-                gmap = task_tools.load_task_groups_map()
-                if os.path.basename(p) in gmap:
-                    gmap[os.path.basename(dst)] = gmap.pop(os.path.basename(p))
-                    task_tools.save_task_groups_map(gmap)
-                return self._json({"ok": True, "path": dst})
-            if act == "delete":
-                os.remove(p)
-                gmap = task_tools.load_task_groups_map()
-                if os.path.basename(p) in gmap:
-                    gmap.pop(os.path.basename(p), None)
-                    task_tools.save_task_groups_map(gmap)
-                return self._json({"ok": True, "removed": p})
-            if act == "generate":
-                # 由源表派生新表：配速缩放 + 坐标漂移 + 里程重算
-                new_name = body.get("new_name") or ""
-                if not new_name:
-                    return self._err("需要 new_name（新任务表文件名）")
-                if not str(new_name).lower().endswith(".json"):
-                    new_name = str(new_name) + ".json"
-                dst = task_path(str(new_name))
-                if os.path.exists(dst) and not body.get("overwrite"):
-                    return self._err(f"已存在: {new_name}（勾选覆盖或改名）")
-                try:
-                    r = task_tools.generate_variant(
-                        p, dst, seed=body.get("seed"),
-                        target_pace=body.get("target_pace"),
-                        drift_deg=body.get("drift_deg"),
-                        rebuild_mileage=bool(body.get("rebuild_mileage", True)))
-                except ValueError as exc:
-                    return self._err(str(exc))
-                r["validation"] = task_tools.validate_task(
-                    dst, split_count=CFG["split_count"], strides_m=CFG["strides"])
-                return self._json(r)
-            if act == "randomize":
-                # 按男女组刚性约束随机化任务表
-                new_name = body.get("new_name") or ""
-                if not new_name:
-                    return self._err("需要 new_name（新任务表文件名）")
-                if not str(new_name).lower().endswith(".json"):
-                    new_name = str(new_name) + ".json"
-                dst = task_path(str(new_name))
-                if os.path.exists(dst) and not body.get("overwrite"):
-                    return self._err(f"已存在: {new_name}（勾选覆盖或改名）")
-                try:
-                    out = task_tools.randomize_task(
-                        p, dst, group=body.get("group", ""),
-                        seed=body.get("seed"),
-                        target_pace=body.get("target_pace"),
-                        target_cadence=body.get("target_cadence"),
-                        target_distance=body.get("target_distance"),
-                        drift_deg=body.get("drift_deg"))
-                except Exception as exc:
-                    return self._err(str(exc))
-                return self._json({
-                    "ok": True, "path": dst,
-                    "summary": task_tools.task_summary(dst),
-                    "validation": task_tools.validate_task(dst, split_count=CFG["split_count"], strides_m=CFG["strides"])
-                })
-            if act == "upload":
-                data_url = body.get("data", "")
-                if "," in data_url and data_url.strip().startswith("data:"):
-                    data_url = data_url.split(",", 1)[1]
-                import base64
-                raw = base64.b64decode(data_url)
-                try:
-                    obj = json.loads(raw.decode("utf-8"))
-                    if not isinstance(obj.get("data", {}).get("pointsList"), list):
-                        return self._err("不是任务表：缺少 data.pointsList")
-                except Exception as exc:  # noqa: BLE001
-                    return self._err(f"不是合法 JSON: {exc}")
-                fname = _safe_name(body.get("name", ""), TASK_RE)
-                dst = task_path(fname)
-                if os.path.exists(dst) and not body.get("overwrite"):
-                    return self._err(f"已存在: {fname}")
-                with open(dst, "wb") as fh:
-                    fh.write(raw)
-                return self._json({"ok": True, "path": dst,
-                                   "summary": task_tools.task_summary(dst)})
-            if act == "to_project":
-                # 复制到项目打表目录，供 main.py -t 直接使用
-                dst_dir = CFG.get("project_tasks") or ""
-                if not dst_dir:
-                    return self._err("未配置项目任务目录（启动时用 --project-tasks 指定）")
-                os.makedirs(dst_dir, exist_ok=True)
-                target = os.path.join(dst_dir, os.path.basename(p))
-                if os.path.exists(target) and not body.get("overwrite"):
-                    return self._err(f"项目目录已存在同名文件: {target}")
-                import shutil as _sh
-                _sh.copy2(p, target)
-                return self._json({"ok": True, "path": target})
-            return self._err("未知 task 动作")
+@app.post("/api/annotation")
+def api_post_annotation():
+    body = _request_json()
+    act = body.get("action")
+    stu = body.get("student", "")
+    name = body.get("name", "")
+    stem = body.get("stem") or (os.path.splitext(name)[0] if name else "")
+    ap = anno_path(stu, stem)
+    if act == "save":
+        ann = body.get("annotation")
+        if not isinstance(ann, dict):
+            return _err("annotation 必须是对象")
+        # 内容绑定：缺 source_sha256 或与照片不符时拒绝保存（不允许无主标注）
+        p = photo_path(stu, name or (stem + ".jpg"))
+        if os.path.isfile(p):
+            sha = _sha256_file(p)
+            if not ann.get("source_sha256"):
+                ann["source_sha256"] = sha
+            elif ann["source_sha256"] != sha:
+                return _err("source_sha256 与当前照片不符，拒绝保存"
+                                 "（请先重新检测生成标注）")
+        ann.setdefault("space", "image")
+        ann.setdefault("bind_apply", {"after_exif": True, "mirrored": False})
+        os.makedirs(os.path.dirname(ap), exist_ok=True)
+        with open(ap, "w", encoding="utf-8") as fh:
+            json.dump(ann, fh, ensure_ascii=False, indent=2)
+        return jsonify({"ok": True, "path": ap})
+    if act == "delete":
+        if os.path.isfile(ap):
+            os.remove(ap)
+            return jsonify({"ok": True, "removed": ap})
+        return jsonify({"ok": True, "removed": None})
+    if act == "drop_source_path":
+        if not os.path.isfile(ap):
+            return _err("标注不存在")
+        with open(ap, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+        removed = d.pop("source_path", None)
+        with open(ap, "w", encoding="utf-8") as fh:
+            json.dump(d, fh, ensure_ascii=False, indent=2)
+        return jsonify({"ok": True, "removed": removed})
+    return _err("未知 annotation 动作")
 
-        if path == "/api/check":
-            fix = bool(body.get("fix_paths"))
-            return self._json(do_check(stu, name, fix_paths=fix))
 
-        if path == "/api/autodetect":
-            return self._json(do_autodetect(stu, name, save=body.get("save", True)))
-
-        if path == "/api/batch":
-            kind = body.get("kind")            # "autodetect" | "check"
-            images = body.get("images") or []
-            results = []
-            for it in images:
-                nm = it.get("name") if isinstance(it, dict) else str(it)
-                try:
-                    if kind == "autodetect":
-                        r = do_autodetect(stu, nm, save=True)
-                        results.append({"name": nm, "ok": r.get("ok", False),
-                                        "errors": r.get("errors", [])})
-                    else:
-                        r = do_check(stu, nm, fix_paths=bool(body.get("fix_paths")))
-                        results.append({"name": nm, "ok": r.get("ok", False),
-                                        "reason": (r.get("errors") or [""])[0],
-                                        "upload_bytes": r.get("upload_bytes"),
-                                        "metrics": r.get("metrics")})
-                except Exception as exc:  # noqa: BLE001
-                    results.append({"name": nm, "ok": False,
-                                    "errors": [f"{type(exc).__name__}: {exc}"]})
-            return self._json({"ok": True, "kind": kind, "results": results})
-
-        return self._err(f"未知接口: {path}", 404)
-
-    # ---- 媒体 ----
-    def _media(self, path, q):
-        # 形如 /thumb/<学号>/<文件名> —— 正好三段，且每段都必须过白名单校验，
-        # 否则会出现目录穿越（../）。校验统一交给 photo_path/_safe_name。
-        parts = [p for p in path.strip("/").split("/") if p != ""]
-        if len(parts) != 3:
-            return self._err(f"路径必须是 /<类型>/<学号>/<文件名>，实得 {len(parts)} 段", 400)
-        kind, stu, name = parts
-        if kind == "thumb":
-            return self._bytes(_thumb(stu, name), cache=True)
-        if kind == "preview":
-            return self._bytes(do_preview(stu, name))
-        if kind != "file":
-            return self._err(f"未知类型: {kind}", 404)
+@app.post("/api/photo")
+def api_post_photo():
+    body = _request_json()
+    act = body.get("action")
+    stu = body.get("student", "")
+    name = body.get("name", "")
+    stem = body.get("stem") or (os.path.splitext(name)[0] if name else "")
+    if act == "delete":
         p = photo_path(stu, name)
-        with open(p, "rb") as fh:
+        if os.path.isfile(p):
+            os.remove(p)
+        ap = anno_path(stu, stem)
+        gone = os.path.isfile(ap)
+        if gone:
+            os.remove(ap)
+        return jsonify({"ok": True, "photo_removed": p,
+                           "annotation_removed": gone})
+    if act == "rename":
+        new_name = _safe_name(body.get("new_name", ""), FILE_RE)
+        if not new_name.lower().endswith(PHOTO_EXT):
+            return _err(f"新文件名必须是图片: {PHOTO_EXT}")
+        p = photo_path(stu, name)
+        dst = os.path.join(CFG["photos"], _safe_name(stu), new_name)
+        if os.path.exists(dst):
+            return _err(f"目标已存在: {new_name}")
+        os.rename(p, dst)
+        # 标注跟着改名（内容绑定是哈希，不受影响）
+        old_ap = anno_path(stu, stem)
+        new_stem = os.path.splitext(new_name)[0]
+        if os.path.isfile(old_ap):
+            os.rename(old_ap, anno_path(stu, new_stem))
+        return jsonify({"ok": True, "name": new_name})
+    return _err("未知 photo 动作")
+
+
+@app.post("/api/task")
+def api_post_task():
+    body = _request_json()
+    act = body.get("action")
+    name = body.get("name", "")
+    p = task_path(name)
+    if act == "set_group":
+        summary = task_tools.set_task_group(p, str(body.get("group") or ""))
+        return jsonify({"ok": True, "path": p, "group": summary["group"],
+                           "group_label": summary["group_label"],
+                           "summary": summary})
+    if act == "validate":
+        return jsonify({"ok": True, **task_tools.validate_task(
+            p, split_count=CFG["split_count"], strides_m=CFG["strides"])})
+    if act == "copy":
+        new_name = body.get("new_name") or TASK_RE.sub("", name)
+        if not str(new_name).lower().endswith(".json"):
+            new_name = str(new_name) + ".json"
+        dst = task_path(str(new_name))
+        if os.path.exists(dst):
+            return _err(f"已存在: {new_name}")
+        import shutil as _sh
+        _sh.copy2(p, dst)
+        gmap = task_tools.load_task_groups_map()
+        if os.path.basename(p) in gmap:
+            gmap[os.path.basename(dst)] = gmap[os.path.basename(p)]
+            task_tools.save_task_groups_map(gmap)
+        return jsonify({"ok": True, "path": dst,
+                           "summary": task_tools.task_summary(dst)})
+    if act == "rename":
+        new_name = body.get("new_name", "")
+        dst = task_path(new_name)
+        if os.path.exists(dst):
+            return _err(f"已存在: {new_name}")
+        os.rename(p, dst)
+        gmap = task_tools.load_task_groups_map()
+        if os.path.basename(p) in gmap:
+            gmap[os.path.basename(dst)] = gmap.pop(os.path.basename(p))
+            task_tools.save_task_groups_map(gmap)
+        return jsonify({"ok": True, "path": dst})
+    if act == "delete":
+        os.remove(p)
+        gmap = task_tools.load_task_groups_map()
+        if os.path.basename(p) in gmap:
+            gmap.pop(os.path.basename(p), None)
+            task_tools.save_task_groups_map(gmap)
+        return jsonify({"ok": True, "removed": p})
+    if act == "generate":
+        # 由源表派生新表：配速缩放 + 坐标漂移 + 里程重算
+        new_name = body.get("new_name") or ""
+        if not new_name:
+            return _err("需要 new_name（新任务表文件名）")
+        if not str(new_name).lower().endswith(".json"):
+            new_name = str(new_name) + ".json"
+        dst = task_path(str(new_name))
+        if os.path.exists(dst) and not body.get("overwrite"):
+            return _err(f"已存在: {new_name}（勾选覆盖或改名）")
+        try:
+            r = task_tools.generate_variant(
+                p, dst, seed=body.get("seed"),
+                target_pace=body.get("target_pace"),
+                drift_deg=body.get("drift_deg"),
+                rebuild_mileage=bool(body.get("rebuild_mileage", True)))
+        except ValueError as exc:
+            return _err(str(exc))
+        r["validation"] = task_tools.validate_task(
+            dst, split_count=CFG["split_count"], strides_m=CFG["strides"])
+        return jsonify(r)
+    if act == "randomize":
+        # 按男女组刚性约束随机化任务表
+        new_name = body.get("new_name") or ""
+        if not new_name:
+            return _err("需要 new_name（新任务表文件名）")
+        if not str(new_name).lower().endswith(".json"):
+            new_name = str(new_name) + ".json"
+        dst = task_path(str(new_name))
+        if os.path.exists(dst) and not body.get("overwrite"):
+            return _err(f"已存在: {new_name}（勾选覆盖或改名）")
+        try:
+            out = task_tools.randomize_task(
+                p, dst, group=body.get("group", ""),
+                seed=body.get("seed"),
+                target_pace=body.get("target_pace"),
+                target_cadence=body.get("target_cadence"),
+                target_distance=body.get("target_distance"),
+                drift_deg=body.get("drift_deg"))
+        except Exception as exc:
+            return _err(str(exc))
+        return jsonify({
+            "ok": True, "path": dst,
+            "summary": task_tools.task_summary(dst),
+            "validation": task_tools.validate_task(dst, split_count=CFG["split_count"], strides_m=CFG["strides"])
+        })
+    if act == "upload":
+        data_url = body.get("data", "")
+        if "," in data_url and data_url.strip().startswith("data:"):
+            data_url = data_url.split(",", 1)[1]
+        raw = base64.b64decode(data_url)
+        try:
+            obj = json.loads(raw.decode("utf-8"))
+            if not isinstance(obj.get("data", {}).get("pointsList"), list):
+                return _err("不是任务表：缺少 data.pointsList")
+        except Exception as exc:  # noqa: BLE001
+            return _err(f"不是合法 JSON: {exc}")
+        fname = _safe_name(body.get("name", ""), TASK_RE)
+        dst = task_path(fname)
+        if os.path.exists(dst) and not body.get("overwrite"):
+            return _err(f"已存在: {fname}")
+        with open(dst, "wb") as fh:
+            fh.write(raw)
+        return jsonify({"ok": True, "path": dst,
+                           "summary": task_tools.task_summary(dst)})
+    if act == "to_project":
+        # 复制到项目打表目录，供 main.py -t 直接使用
+        dst_dir = CFG.get("project_tasks") or ""
+        if not dst_dir:
+            return _err("未配置项目任务目录（启动时用 --project-tasks 指定）")
+        os.makedirs(dst_dir, exist_ok=True)
+        target = os.path.join(dst_dir, os.path.basename(p))
+        if os.path.exists(target) and not body.get("overwrite"):
+            return _err(f"项目目录已存在同名文件: {target}")
+        import shutil as _sh
+        _sh.copy2(p, target)
+        return jsonify({"ok": True, "path": target})
+    return _err("未知 task 动作")
+
+
+@app.post("/api/check")
+def api_post_check():
+    body = _request_json()
+    stu = body.get("student", "")
+    name = body.get("name", "")
+    fix = bool(body.get("fix_paths"))
+    return jsonify(do_check(stu, name, fix_paths=fix))
+
+
+@app.post("/api/autodetect")
+def api_post_autodetect():
+    body = _request_json()
+    stu = body.get("student", "")
+    name = body.get("name", "")
+    return jsonify(do_autodetect(stu, name, save=body.get("save", True)))
+
+
+@app.post("/api/batch")
+def api_post_batch():
+    body = _request_json()
+    stu = body.get("student", "")
+    kind = body.get("kind")            # "autodetect" | "check"
+    images = body.get("images") or []
+    results = []
+    for it in images:
+        nm = it.get("name") if isinstance(it, dict) else str(it)
+        try:
+            if kind == "autodetect":
+                r = do_autodetect(stu, nm, save=True)
+                results.append({"name": nm, "ok": r.get("ok", False),
+                                "errors": r.get("errors", [])})
+            else:
+                r = do_check(stu, nm, fix_paths=bool(body.get("fix_paths")))
+                results.append({"name": nm, "ok": r.get("ok", False),
+                                "reason": (r.get("errors") or [""])[0],
+                                "upload_bytes": r.get("upload_bytes"),
+                                "metrics": r.get("metrics")})
+        except Exception as exc:  # noqa: BLE001
+            results.append({"name": nm, "ok": False,
+                            "errors": [f"{type(exc).__name__}: {exc}"]})
+    return jsonify({"ok": True, "kind": kind, "results": results})
+
+
+@app.get("/api/media/<any(thumb,file,preview):kind>/<student>/<name>")
+def api_get_media(kind, student, name):
+    mime_type = "image/jpeg"
+    if kind == "thumb":
+        data = _thumb(student, name)
+    elif kind == "preview":
+        data = do_preview(student, name)
+    else:
+        path = photo_path(student, name)
+        with open(path, "rb") as fh:
             data = fh.read()
-        ctype = mimetypes.guess_type(p)[0] or "image/jpeg"
-        return self._bytes(data, ctype, cache=True)
-
-    # ---- 静态文件 ----
-    def _static(self, path):
-        rel = "index.html" if path in ("/", "") else path.lstrip("/")
-        rel = posixpath.normpath(rel)
-        if rel.startswith(".."):
-            return self._err("非法路径", 403)
-        f = os.path.join(WEB_DIR, rel.replace("/", os.sep))
-        if not os.path.isfile(f):
-            return self._err(f"未找到: {path}", 404)
-        ctype = mimetypes.guess_type(f)[0] or "application/octet-stream"
-        if ctype.startswith("text/") or ctype in ("application/javascript",):
-            ctype += "; charset=utf-8"
-        with open(f, "rb") as fh:
-            self._bytes(fh.read(), ctype)
-
-
-def _pick_port(start: int, tries: int = 20) -> int:
-    for p in range(start, start + tries):
-        with socket.socket() as s:
-            try:
-                s.bind(("127.0.0.1", p))
-                return p
-            except OSError:
-                continue
-    raise SystemExit(f"{start}~{start + tries} 全部被占用，请用 --port 指定其它端口")
+        mime_type = mimetypes.guess_type(path)[0] or mime_type
+    return jsonify(ok=True, mime_type=mime_type, data=base64.b64encode(data).decode("ascii"))
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Yun2Face 网页控制台（本机工具，只监听 127.0.0.1）")
+    from waitress import create_server
+
+    ap = argparse.ArgumentParser(description="Yun2Face JSON API 与定时调度器")
     ap.add_argument("--host", default="127.0.0.1", help="监听地址；云服务器可用 0.0.0.0")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--config-root", default=CFG["config_root"], help="学号配置目录，默认项目根/students_cofig")
@@ -2536,8 +2562,13 @@ def main(argv=None) -> int:
     ap.add_argument("--python", default="", help="跑 main.py 用的 python（默认当前解释器）")
     ap.add_argument("--dry-home", dest="dry_home", default=CFG["dry_home"],
                     help="离线演练用的 getHomeRunInfo fixture")
-    ap.add_argument("--no-browser", action="store_true")
+    ap.add_argument("--frontend-origin", action="append", default=None,
+                    help="允许跨源访问 API 的前端来源，如 http://localhost:9000，可重复指定")
+    ap.add_argument("--no-browser", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
+
+    if args.frontend_origin is not None:
+        app.config["FRONTEND_ORIGINS"] = tuple(args.frontend_origin)
 
     CFG["photos"] = os.path.abspath(args.photos)
     CFG["annos"] = os.path.abspath(args.annos)
@@ -2551,55 +2582,45 @@ def main(argv=None) -> int:
     for k in ("config_root", "photos", "annos", "tasks"):
         if not os.path.isdir(CFG[k]):
             os.makedirs(CFG[k], exist_ok=True)
-    _load_persisted_runs()
-    # 上次异常退出可能留下单表临时目录；启动时按已落盘的运行记录清理。
-    for _run in list(RUNS.values()):
-        _cleanup_task_pick(_run.get("pick_dir"))
-    _load_schedules()
-    threading.Thread(target=_schedule_loop, daemon=True).start()
-
-    port = _pick_port(args.port)
-    url = f"http://{args.host}:{port}/"
-    ok, why = face_check.detect_available()
-    print("=" * 74)
-    print("  Yun2Face 网页控制台")
-    print(f"  地址    : http://{args.host}:{port}/")
-    print(f"  照片根  : {CFG['photos']}")
-    print(f"  标注根  : {CFG['annos']}")
-    print(f"  配置根  : {CFG['config_root']}")
-    print(f"  任务表库: {CFG['tasks']}")
-    print(f"  送入项目: {CFG['project_tasks']}")
-    print(f"  默认项目: {CFG['project']}")
-    tz = schedule_timezone_info()
-    print(f"  定时时区: {tz['label']}（定时任务 HH:MM 按此时区解释）；"
-          f"服务器本地: {tz['server_label']}"
-          + ("" if tz["matches_server"] else "  ⚠ 与定时时区不同，已按定时时区计算"))
-    projs = discover_projects()
-    print(f"  项目扫描: {CFG['projects_root']}  →  发现 {len(projs)} 个账号项目")
-    for p in projs:
-        mark = "✔token" if p["token"] else "⚠无token"
-        tds = ",".join(f"{d['name']}({d['files']})" for d in p["task_dirs"]) or "无任务表目录"
-        print(f"      {p['student'] or p['name']:<12} {mark:<9} {p['school'] or '':<14} {tds}")
-    print(f"  运行用  : {_python_exe()}")
-    if not os.path.isfile(os.path.join(CFG["project"], "main.py")):
-        print("  ⚠ 项目根下没有 main.py：运行控制台会不可用（用 --project 指定正确路径）")
-    print(f"  自动检测: {'可用' if ok else '不可用 — ' + why}")
-    print("  停止    : 在本窗口按 Ctrl+C")
-    print("=" * 74)
-    srv = ThreadingHTTPServer((args.host, port), Handler)
-    should_open_browser = not args.no_browser
-    if should_open_browser and os.name != "nt":
-        # 在无桌面图形界面的 Linux 服务器环境下跳过浏览器调用，避免 xdg-open 报警
-        if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
-            should_open_browser = False
-    if should_open_browser:
-        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    server = create_server(app, host=args.host, port=args.port)
     try:
-        srv.serve_forever()
-    except KeyboardInterrupt:
-        print("\n已停止。")
+        _load_persisted_runs()
+        # 上次异常退出可能留下单表临时目录；启动时按已落盘的运行记录清理。
+        for _run in list(RUNS.values()):
+            _cleanup_task_pick(_run.get("pick_dir"))
+        _load_schedules()
+        threading.Thread(target=_schedule_loop, daemon=True).start()
+
+        ok, why = face_check.detect_available()
+        print("=" * 74)
+        print("  Yun2Face JSON API 与定时调度器")
+        print(f"  API 监听: {args.host}:{getattr(server, 'effective_port', args.port)}")
+        print(f"  照片根  : {CFG['photos']}")
+        print(f"  标注根  : {CFG['annos']}")
+        print(f"  配置根  : {CFG['config_root']}")
+        print(f"  任务表库: {CFG['tasks']}")
+        print(f"  送入项目: {CFG['project_tasks']}")
+        print(f"  默认项目: {CFG['project']}")
+        tz = schedule_timezone_info()
+        print(f"  定时时区: {tz['label']}（定时任务 HH:MM 按此时区解释）；"
+              f"服务器本地: {tz['server_label']}"
+              + ("" if tz["matches_server"] else "  ⚠ 与定时时区不同，已按定时时区计算"))
+        projs = discover_projects()
+        print(f"  项目扫描: {CFG['projects_root']}  →  发现 {len(projs)} 个账号项目")
+        for p in projs:
+            mark = "✔token" if p["token"] else "⚠无token"
+            tds = ",".join(f"{d['name']}({d['files']})" for d in p["task_dirs"]) or "无任务表目录"
+            print(f"      {p['student'] or p['name']:<12} {mark:<9} {p['school'] or '':<14} {tds}")
+        print(f"  运行用  : {_python_exe()}")
+        if not os.path.isfile(os.path.join(CFG["project"], "main.py")):
+            print("  ⚠ 项目根下没有 main.py：运行控制台会不可用（用 --project 指定正确路径）")
+        print(f"  自动检测: {'可用' if ok else '不可用 — ' + why}")
+        print("  停止    : 在本窗口按 Ctrl+C")
+        print("=" * 74)
+        server.run()
     finally:
-        srv.server_close()
+        server.task_dispatcher.shutdown()
+        server.close()
     return 0
 
 

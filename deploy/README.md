@@ -1,6 +1,6 @@
 # Ubuntu 22.04 systemd daemon
 
-这个服务守护 `web_app.py`。网页服务启动后会同时启动内置的每日定时任务调度器。
+这个服务运行 `web_app.py`，启动 Flask JSON API 和内置定时任务调度器。保持单进程运行，定时任务由该进程统一调度。
 
 假设项目部署在 `/opt/yunForNewVersion`，运行用户是 `ubuntu`：
 
@@ -22,13 +22,23 @@ sudo systemctl stop yunfornewversion-web.service
 sudo journalctl -u yunfornewversion-web.service -f
 ```
 
-默认只监听 `127.0.0.1:8765`。如果前面有 Nginx 反向代理，保持这个配置即可。
-如果确实需要直接暴露端口，可编辑 service，将 `--host 127.0.0.1` 改为 `--host 0.0.0.0`，然后执行：
+默认 API 监听 `127.0.0.1:8765`。在现有 Nginx 站点里加入以下配置，让 Nginx 从 `web/` 提供页面与脚本，并把 `/api/` 转发给 Flask。将 `web/api-config.js` 中的 `window.YUN_API_BASE_URL` 设为空字符串，让浏览器使用同源 API。
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart yunfornewversion-web.service
+```nginx
+root /opt/yunForNewVersion/web;
+index index.html;
+
+location / {
+    try_files $uri $uri/ =404;
+}
+
+location /api/ {
+    client_max_body_size 0;
+    proxy_pass http://127.0.0.1:8765;
+}
 ```
+
+旧版站点若把所有请求转发给后端，需要替换为以上静态文件与 `/api/` 配置，并重启后端。控制台可读取和修改本机数据，远程访问时请通过现有认证或私有网络提供访问。
 
 自定义 Python 或运行用户：
 

@@ -10,6 +10,8 @@ const S = {
 };
 
 const $ = (id) => document.getElementById(id);
+const API_BASE_URL = (window.YUN_API_BASE_URL || '').replace(/\/+$/, '');
+const TABS = ['face', 'stats', 'history', 'task', 'run', 'schedule', 'route', 'mapcfg', 'config'];
 
 /* 后端时间戳是 Unix 秒，这里统一格式化为本地 YYYY-MM-DD HH:MM:SS。 */
 function fmtTs(ts) {
@@ -43,10 +45,15 @@ async function api(path, body) {
   const opt = body
     ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
     : {};
-  const r = await fetch(path, opt);
-  const j = await r.json().catch(() => ({ ok: false, error: 'HTTP ' + r.status }));
-  if (!j.ok && j.error) throw new Error(j.error);
+  const r = await fetch(`${API_BASE_URL}${path}`, opt);
+  const j = await r.json().catch(() => ({ ok: false, error: `API 响应不是 JSON（HTTP ${r.status}）` }));
+  if (!r.ok || (!j.ok && j.error)) throw new Error(j.error || 'HTTP ' + r.status);
   return j;
+}
+
+async function photoDataUrl(kind, student, name) {
+  const { mime_type, data } = await api(`/api/media/${kind}/${encodeURIComponent(student)}/${encodeURIComponent(name)}`);
+  return `data:${mime_type};base64,${data}`;
 }
 
 /* ---------------------------------------------------------------- 浅色 / 深色主题管理 */
@@ -129,7 +136,8 @@ function initTheme() {
 /* ---------------------------------------------------------------- 初始化 */
 async function boot() {
   initTheme();
-  loadMapConfig();
+  activateTab(tabFromUrl());
+  const mapConfig = loadMapConfig();
   try {
     S.cfg = await api('/api/config');
     $('paths').textContent = `照片：${S.cfg.photos}　|　标注：${S.cfg.annos}`;
@@ -143,21 +151,16 @@ async function boot() {
         + `${S.students.reduce((a, s) => a + s.annos, 0)} 份标注。`
         + '左侧选学号看照片，顶部「跑步任务」看任务表。');
 
-    // 深链接：?student=<学号>&open=<照片> 直接进到某个学号、可选自动打开编辑
-    //          ?tab=task 直接切到跑步任务页
-    const q = new URLSearchParams(location.search);
-    if (q.get('tab') === 'task') {
-      switchTab('task');
-      const tf = q.get('open_task');
-      if (tf) { await loadTasks(); await openTask(tf); }
-    }
-    const stu = q.get('student');
+    const stu = new URLSearchParams(location.search).get('student');
     if (stu && S.students.some(x => x.student === stu)) {
-      switchTab('face');
-      await selectStudent(stu);
-      const open = q.get('open');
-      if (open) await openEdit(open);
+      await selectStudent(stu, false);
     }
+    await mapConfig;
+    const q = new URLSearchParams(location.search);
+    const tab = tabFromUrl();
+    if (tab !== 'mapcfg') await switchTab(tab, false);
+    if (tabFromUrl() === 'task' && q.get('open_task')) await openTask(q.get('open_task'));
+    if (tab === 'face' && S.student === stu && stu && q.get('open')) await openEdit(q.get('open'));
   } catch (e) {
     log('初始化失败：' + e.message);
   }
@@ -189,11 +192,12 @@ function filterStudents(keyword) {
   });
 }
 
-async function selectStudent(name) {
+async function selectStudent(name, refreshTab = true) {
   S.student = name;
   $('title').textContent = name;
   await loadStudents();
   await loadImages();
+  if (!refreshTab) return;
   if (!$('pane-config').hidden) await loadControlConfig();
   if (!$('pane-stats').hidden) await loadStatistics();
   if (!$('pane-history').hidden) await loadHistoryTerms();
@@ -212,8 +216,10 @@ const ANN_BADGE = {
 };
 
 async function loadImages() {
-  if (!S.student) return;
-  const j = await api('/api/images?student=' + encodeURIComponent(S.student));
+  const student = S.student;
+  if (!student) return;
+  const j = await api('/api/images?student=' + encodeURIComponent(student));
+  if (student !== S.student) return;
   S.images = j.images;
   const tb = $('rows');
   tb.innerHTML = '';
@@ -225,8 +231,7 @@ async function loadImages() {
     const tr = document.createElement('tr');
     const [cls, label] = ANN_BADGE[im.annotation.state] || ['b-dim', im.annotation.state];
     tr.innerHTML = `
-      <td><img class="tn" src="/thumb/${encodeURIComponent(S.student)}/${encodeURIComponent(im.name)}"
-               onclick="zoom(this.src)"></td>
+      <td><img class="tn" alt="缩略图加载中" onclick="if (this.src) zoom(this.src)"></td>
       <td><div>${im.name}</div>
           <div class="mono" style="color:#9aa3b5">${im.sha256 ? im.sha256.slice(0, 16) + '…' : '（无法读取）'}</div>
           ${im.error ? `<div class="detail" style="color:#ff5c5c">${im.error}</div>` : ''}</td>
@@ -242,6 +247,11 @@ async function loadImages() {
         <button class="danger" onclick="delPhoto('${im.name}')">删除</button>
       </td>`;
     tb.appendChild(tr);
+    const thumbnail = tr.querySelector('.tn');
+    photoDataUrl('thumb', student, im.name).then(src => {
+      thumbnail.alt = im.name;
+      thumbnail.src = src;
+    }).catch(() => { thumbnail.alt = '缩略图加载失败'; });
   }
   log(`已加载 ${S.student}：${S.images.length} 张`);
 }
@@ -364,11 +374,16 @@ async function autodetect(name, silent) {
 
 async function preview(name) {
   const w = window.open('', '_blank');
-  w.document.write('<p style="font:14px sans-serif;color:#ccc;background:#111;padding:10px">生成中…</p>');
+  if (!w) { log('无法打开预览窗口'); return; }
+  const body = w.document.body;
+  body.textContent = '生成中…';
   try {
-    const r = await fetch(`/preview/${encodeURIComponent(S.student)}/${encodeURIComponent(name)}`);
-    const b = await r.blob();
-    w.location = URL.createObjectURL(b);
+    const image = w.document.createElement('img');
+    image.src = await photoDataUrl('preview', S.student, name);
+    image.alt = name;
+    image.style.maxWidth = '100%';
+    image.style.maxHeight = 'calc(100vh - 16px)';
+    body.replaceChildren(image);
   } catch (e) { w.close(); log('预览失败：' + e.message); }
 }
 
@@ -465,17 +480,17 @@ function zoom(src) {
 
 /* ---------------------------------------------------------------- 标注编辑器 */
 async function openEdit(name) {
+  const student = S.student;
   const stem = name.replace(/\.[^.]+$/, '');
-  const j = await api(`/api/annotation?student=${encodeURIComponent(S.student)}&stem=${encodeURIComponent(stem)}`);
+  const annotationUrl = `/api/annotation?student=${encodeURIComponent(student)}&stem=${encodeURIComponent(stem)}`;
+  const j = await api(annotationUrl);
   let ann = j.annotation, size = j.photo_size;
   if (!j.exists) {
     if (!confirm('该照片还没有标注，现在用自动检测生成一份？')) return;
-    const r = await api('/api/autodetect', { student: S.student, name, save: true });
+    const r = await api('/api/autodetect', { student, name, save: true });
     if (!r.ok) { alert('自动检测失败：' + (r.errors || []).join('；')); return; }
-    ann = r.annotation;
-    if (!size) { const im = new Image(); }
     await loadImages();
-    const j2 = await api(`/api/annotation?student=${encodeURIComponent(S.student)}&stem=${encodeURIComponent(stem)}`);
+    const j2 = await api(annotationUrl);
     ann = j2.annotation; size = j2.photo_size;
   }
   if (!ann || !ann.box) { alert('标注格式不支持（需要 box + points 的单标注格式）'); return; }
@@ -484,21 +499,30 @@ async function openEdit(name) {
   // 显示宽度：原图很大，缩到 1100 以内再画，坐标按 scale 反算
   const maxW = Math.min(1100, window.innerWidth * 0.88);
   const scale = Math.min(1, maxW / size[0]);
-  S.edit = { name, stem, ann: JSON.parse(JSON.stringify(ann)), size, scale };
-
   const img = $('editImg');
-  img.src = `/file/${encodeURIComponent(S.student)}/${encodeURIComponent(name)}?t=${Date.now()}`;
-  await new Promise(r => { img.onload = r; img.onerror = r; });
+  try {
+    const src = await photoDataUrl('file', student, name);
+    if (student !== S.student) return;
+    img.src = src;
+    await img.decode();
+  } catch (e) { log('照片加载失败：' + e.message); return; }
+  if (student !== S.student) return;
+  S.edit = { name, stem, ann: JSON.parse(JSON.stringify(ann)), size, scale };
   $('editTitle').textContent = `编辑标注 — ${name}`;
   $('editScale').textContent = `原图 ${size[0]}×${size[1]}　显示比例 ${(scale * 100).toFixed(1)}%`;
   $('editScore').value = ann.score != null ? ann.score : 1;
-  drawOverlay();
   $('editGate').innerHTML = '<span class="hint">点"重新计算门限"查看当前框是否达标</span>';
   $('edit').showModal();
+  drawOverlay();
   reevaluate();
 }
 
-function closeEdit() { $('edit').close(); S.edit = null; }
+function closeEdit() { $('edit').close(); }
+
+$('edit').addEventListener('close', () => {
+  S.edit = null;
+  $('editImg').removeAttribute('src');
+});
 
 function drawOverlay() {
   const e = S.edit; if (!e) return;
@@ -651,26 +675,45 @@ async function saveAnnotation() {
 }
 
 window.addEventListener('resize', () => { if (S.edit) drawOverlay(); });
-boot();
 
 /* ================================================================ 跑步任务 */
 const T = { tasks: [], cur: null, split: 10 };
 
-function switchTab(which) {
-  for (const [k, id] of [['face', 'pane-face'], ['stats', 'pane-stats'], ['history', 'pane-history'], ['task', 'pane-task'], ['run', 'pane-run'], ['schedule', 'pane-schedule'],
-                           ['route', 'pane-route'], ['mapcfg', 'pane-mapcfg'], ['config', 'pane-config']]) {
-    $(id).hidden = (k !== which);
+function tabFromUrl() {
+  const q = new URLSearchParams(location.search);
+  const tab = q.get('tab');
+  return TABS.includes(tab) ? tab : 'face';
+}
+
+function activateTab(which) {
+  if (which !== 'face' && $('edit').open) closeEdit();
+  if (which !== 'task' && $('taskDlg').open) $('taskDlg').close();
+  for (const k of TABS) {
+    $('pane-' + k).hidden = (k !== which);
     $('tab-' + k).classList.toggle('active', k === which);
   }
-  if (which === 'task') loadTasks();
-  if (which === 'stats') loadStatistics();
-  if (which === 'history') loadHistoryTerms();
-  if (which === 'run') { loadRunOptions(); loadRuns(); }
-  if (which === 'schedule') loadSchedules();
-  if (which === 'route') { loadRouteMeta(); }
-  if (which === 'mapcfg') { loadMapConfig(); }
-  if (which === 'config') { loadControlConfig(); }
 }
+
+function switchTab(which, updateUrl = true) {
+  if (updateUrl && which !== tabFromUrl()) {
+    const url = new URL(location.href);
+    url.searchParams.set('tab', which);
+    url.searchParams.delete('open');
+    url.searchParams.delete('open_task');
+    history.pushState(null, '', url);
+  }
+  activateTab(which);
+  if (which === 'task') return loadTasks();
+  if (which === 'stats') return loadStatistics();
+  if (which === 'history') return loadHistoryTerms();
+  if (which === 'run') return Promise.all([loadRunOptions(), loadRuns()]);
+  if (which === 'schedule') return loadSchedules();
+  if (which === 'route') return loadRouteMeta();
+  if (which === 'mapcfg') return loadMapConfig();
+  if (which === 'config') return loadControlConfig();
+}
+
+window.addEventListener('popstate', () => switchTab(tabFromUrl(), false));
 
 /* ================================================================ 运行控制 */
 const R = { runs: [], cfg: null, cur: null, since: 0, timer: null,
@@ -2272,3 +2315,5 @@ async function saveControlConfig() {
     log(`已保存 ${j.student || '主项目'} 的 config.ini`);
   } catch (e) { $('configStatus').textContent = '保存失败：' + e.message; }
 }
+
+boot();

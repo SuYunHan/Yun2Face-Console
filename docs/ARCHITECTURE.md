@@ -17,6 +17,9 @@ tools/EasyAutoRunServer/  旧定时批量启动壳（run.sh 仍走 main.py）
 tests/             99 项离线测试（无任何真实网络）
 config.ini         设备/密钥/跑步参数；tasks_*/tasklist_*.json 任务表（抓包模板）
 dry_run_home.json  --dry-run 的 getHomeRunInfo 假响应
+web_app.py         Flask JSON API，复用现有业务函数并运行定时调度器
+web/               独立静态前端，使用查询参数路由并通过 fetch 访问 API
+web_shared.py      网页后端共用的配置和路线服务
 ```
 
 依赖方向：`main.py → yun_http.py`；`main.py → yun_face.py`（yun_face 不 import main）；

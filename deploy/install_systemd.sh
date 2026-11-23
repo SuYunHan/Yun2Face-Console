@@ -34,7 +34,7 @@ fi
 
 install -d -o "$RUN_USER" -g "$RUN_GROUP" "$PROJECT_ROOT"
 install -m 0644 "$SERVICE_SRC" "$SERVICE_DST"
-sed -i "s#^ExecStart=.*#ExecStart=$PYTHON_BIN $PROJECT_ROOT/web_app.py --host 0.0.0.0 --port 8765 --no-browser#" "$SERVICE_DST"
+sed -i "s#^ExecStart=.*#ExecStart=$PYTHON_BIN $PROJECT_ROOT/web_app.py --host 127.0.0.1 --port 8765#" "$SERVICE_DST"
 sed -i "s#^WorkingDirectory=.*#WorkingDirectory=$PROJECT_ROOT#" "$SERVICE_DST"
 sed -i "s#^User=.*#User=$RUN_USER#" "$SERVICE_DST"
 sed -i "s#^Group=.*#Group=$RUN_GROUP#" "$SERVICE_DST"
