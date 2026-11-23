@@ -6,7 +6,7 @@ const S = {
   student: null,
   images: [],
   cfg: null,
-  edit: null,        // {name, stem, ann, size, scale, imgW, imgH}
+  edit: null,        // {name, stem, ann, size}
 };
 
 const $ = (id) => document.getElementById(id);
@@ -149,7 +149,7 @@ async function boot() {
     log(`就绪：${S.students.length} 个学号目录，共 `
         + `${S.students.reduce((a, s) => a + s.photos, 0)} 张照片、`
         + `${S.students.reduce((a, s) => a + s.annos, 0)} 份标注。`
-        + '左侧选学号看照片，顶部「跑步任务」看任务表。');
+        + '选择学号查看照片，打开「跑步任务」查看任务表。');
 
     const stu = new URLSearchParams(location.search).get('student');
     if (stu && S.students.some(x => x.student === stu)) {
@@ -171,16 +171,25 @@ async function loadStudents() {
   S.students = j.students;
   const countEl = $('stuCount');
   if (countEl) countEl.textContent = S.students.length;
+  $('accountLabel').textContent = S.student || '选择学号';
   const box = $('stus');
   box.innerHTML = '';
   if (!S.students.length) box.innerHTML = '<div class="hint" style="padding:10px;text-align:center">还没有任何学号目录</div>';
   for (const s of S.students) {
-    const div = document.createElement('div');
-    div.className = 'stu' + (s.student === S.student ? ' active' : '');
-    div.innerHTML = `<span>${s.student}</span><small>${s.photos}/${s.annos}</small>`;
-    div.onclick = () => selectStudent(s.student);
-    box.appendChild(div);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'stu' + (s.student === S.student ? ' active' : '');
+    button.setAttribute('aria-pressed', String(s.student === S.student));
+    button.innerHTML = `<span>${s.student}</span><small>${s.photos}/${s.annos}</small>`;
+    button.onclick = () => selectStudent(s.student);
+    box.appendChild(button);
   }
+  filterStudents($('stuSearch').value);
+}
+
+function toggleAccountPanel() {
+  const button = $('accountToggle');
+  button.setAttribute('aria-expanded', String(button.getAttribute('aria-expanded') !== 'true'));
 }
 
 function filterStudents(keyword) {
@@ -195,6 +204,12 @@ function filterStudents(keyword) {
 async function selectStudent(name, refreshTab = true) {
   S.student = name;
   $('title').textContent = name;
+  $('accountLabel').textContent = name;
+  const toggle = $('accountToggle');
+  if (toggle.getAttribute('aria-expanded') === 'true') {
+    toggle.setAttribute('aria-expanded', 'false');
+    if (toggle.offsetWidth) toggle.focus({ preventScroll: true });
+  }
   await loadStudents();
   await loadImages();
   if (!refreshTab) return;
@@ -224,22 +239,23 @@ async function loadImages() {
   const tb = $('rows');
   tb.innerHTML = '';
   if (!S.images.length) {
-    tb.innerHTML = '<tr><td colspan="6" class="hint" style="padding:18px">该目录下没有图片，可点右上角"添加照片"</td></tr>';
+    tb.innerHTML = '<tr role="row"><td role="cell" colspan="6" class="photo-empty hint" style="padding:18px">该目录下没有图片，可点“添加照片”</td></tr>';
     return;
   }
   for (const im of S.images) {
     const tr = document.createElement('tr');
+    tr.setAttribute('role', 'row');
     const [cls, label] = ANN_BADGE[im.annotation.state] || ['b-dim', im.annotation.state];
     tr.innerHTML = `
-      <td><img class="tn" alt="缩略图加载中" onclick="if (this.src) zoom(this.src)"></td>
-      <td><div>${im.name}</div>
+      <td class="photo-thumb" role="cell"><img class="tn" alt="缩略图加载中" onclick="if (this.src) zoom(this.src)"></td>
+      <td role="cell"><div>${im.name}</div>
           <div class="mono" style="color:#9aa3b5">${im.sha256 ? im.sha256.slice(0, 16) + '…' : '（无法读取）'}</div>
           ${im.error ? `<div class="detail" style="color:#ff5c5c">${im.error}</div>` : ''}</td>
-      <td>${im.size ? im.size[0] + '×' + im.size[1] : '—'}<br><span class="hint">${(im.bytes / 1024 / 1024).toFixed(2)} MB</span></td>
-      <td><span class="badge ${cls}">${label}</span>
+      <td role="cell">${im.size ? im.size[0] + '×' + im.size[1] : '—'}<br><span class="hint">${(im.bytes / 1024 / 1024).toFixed(2)} MB</span></td>
+      <td class="photo-status" role="cell" data-label="标注状态"><span class="badge ${cls}">${label}</span>
           ${im.annotation.detail ? `<div class="detail">${im.annotation.detail}</div>` : ''}</td>
-      <td id="res-${im.stem}"><span class="hint">未检查</span></td>
-      <td class="ops">
+      <td class="photo-check" role="cell" data-label="质量预检" id="res-${im.stem}"><span class="hint">未检查</span></td>
+      <td class="ops" role="cell">
         <button onclick="check('${im.name}')">预检</button>
         <button onclick="openEdit('${im.name}')">标注</button>
         <button onclick="autodetect('${im.name}')">重检测</button>
@@ -260,7 +276,7 @@ async function loadStatistics() {
   const message = $('statsMessage');
   const grid = $('statsGrid');
   if (!S.student) {
-    $('statsStudent').textContent = '请选择左侧学号';
+    $('statsStudent').textContent = '请选择学号';
     message.textContent = '选择学号后点击“刷新统计”。';
     grid.innerHTML = '';
     return;
@@ -287,7 +303,7 @@ async function loadStatistics() {
 
 const HISTORY = { terms: [], runs: [], record: null };
 async function loadHistoryTerms() {
-  if (!S.student) { $('historyStudent').textContent = '请选择左侧学号'; return; }
+  if (!S.student) { $('historyStudent').textContent = '请选择学号'; return; }
   $('historyStudent').textContent = S.student;
   $('historyMessage').textContent = '正在读取学期…';
   try {
@@ -416,7 +432,7 @@ async function batch(kind) {
 }
 
 async function uploadPicked(input) {
-  if (!S.student) { alert('请先选择左侧学号目录'); return; }
+  if (!S.student) { alert('请先选择学号'); return; }
   const files = [...input.files];
   input.value = '';
   for (const f of files) {
@@ -466,7 +482,7 @@ async function deleteStudent() {
   await api('/api/students', { action: 'delete', student: S.student });
   log('🗑 已删除目录 ' + S.student);
   S.student = null;
-  $('title').textContent = '请选择左侧学号';
+  $('title').textContent = '请选择学号';
   $('rows').innerHTML = '';
   await loadStudents();
 }
@@ -496,9 +512,6 @@ async function openEdit(name) {
   if (!ann || !ann.box) { alert('标注格式不支持（需要 box + points 的单标注格式）'); return; }
   if (!size) { alert('无法读取照片尺寸'); return; }
 
-  // 显示宽度：原图很大，缩到 1100 以内再画，坐标按 scale 反算
-  const maxW = Math.min(1100, window.innerWidth * 0.88);
-  const scale = Math.min(1, maxW / size[0]);
   const img = $('editImg');
   try {
     const src = await photoDataUrl('file', student, name);
@@ -507,9 +520,8 @@ async function openEdit(name) {
     await img.decode();
   } catch (e) { log('照片加载失败：' + e.message); return; }
   if (student !== S.student) return;
-  S.edit = { name, stem, ann: JSON.parse(JSON.stringify(ann)), size, scale };
+  S.edit = { name, stem, ann: JSON.parse(JSON.stringify(ann)), size };
   $('editTitle').textContent = `编辑标注 — ${name}`;
-  $('editScale').textContent = `原图 ${size[0]}×${size[1]}　显示比例 ${(scale * 100).toFixed(1)}%`;
   $('editScore').value = ann.score != null ? ann.score : 1;
   $('editGate').innerHTML = '<span class="hint">点"重新计算门限"查看当前框是否达标</span>';
   $('edit').showModal();
@@ -532,6 +544,7 @@ function drawOverlay() {
   ov.style.width = W + 'px'; ov.style.height = H + 'px';
   // 用"显示尺寸 / 原图尺寸"换算，避免 CSS 缩放导致错位
   const kx = W / e.size[0], ky = H / e.size[1];
+  $('editScale').textContent = `原图 ${e.size[0]}×${e.size[1]}　显示比例 ${(kx * 100).toFixed(1)}%`;
   const [x1, y1, x2, y2] = e.ann.box;
   const px = (v, k) => v * k;
 
@@ -562,28 +575,30 @@ function drawOverlay() {
 }
 
 function attachDrag(el, kx, ky, what) {
-  let sx = 0, sy = 0, orig = null;
   el.addEventListener('pointerdown', ev => {
+    if (!ev.isPrimary || ev.button !== 0) return;
     ev.preventDefault(); ev.stopPropagation();
     el.setPointerCapture(ev.pointerId);
-    sx = ev.clientX; sy = ev.clientY;
-    orig = what === 'box' ? [...S.edit.ann.box] : [...S.edit.ann.points[what]];
+    const { clientX, clientY } = ev;
+    const ann = S.edit.ann;
+    const original = what === 'box' ? ann.box : ann.points[what];
     const move = (e2) => {
-      const dx = (e2.clientX - sx) / kx, dy = (e2.clientY - sy) / ky;
+      const dx = (e2.clientX - clientX) / kx, dy = (e2.clientY - clientY) / ky;
+      const position = original.map((value, i) => value + (i % 2 === 0 ? dx : dy));
       if (what === 'box') {
-        S.edit.ann.box = [orig[0] + dx, orig[1] + dy, orig[2] + dx, orig[3] + dy];
+        ann.box = position;
       } else {
-        S.edit.ann.points[what] = [orig[0] + dx, orig[1] + dy];
+        ann.points[what] = position;
       }
-      drawOverlay();
+      el.style.left = position[0] * kx + 'px';
+      el.style.top = position[1] * ky + 'px';
     };
-    const up = () => {
+    const finish = () => {
       el.removeEventListener('pointermove', move);
-      el.removeEventListener('pointerup', up);
-      reevaluate();
+      if (S.edit) reevaluate();
     };
     el.addEventListener('pointermove', move);
-    el.addEventListener('pointerup', up);
+    el.addEventListener('lostpointercapture', finish, { once: true });
   });
 }
 
@@ -674,7 +689,9 @@ async function saveAnnotation() {
   } catch (err) { alert('保存失败：' + err.message); }
 }
 
-window.addEventListener('resize', () => { if (S.edit) drawOverlay(); });
+window.addEventListener('resize', () => {
+  if (S.edit && $('edit').open) drawOverlay();
+});
 
 /* ================================================================ 跑步任务 */
 const T = { tasks: [], cur: null, split: 10 };
@@ -689,10 +706,30 @@ function activateTab(which) {
   if (which !== 'face' && $('edit').open) closeEdit();
   if (which !== 'task' && $('taskDlg').open) $('taskDlg').close();
   for (const k of TABS) {
-    $('pane-' + k).hidden = (k !== which);
-    $('tab-' + k).classList.toggle('active', k === which);
+    const active = k === which;
+    const tab = $('tab-' + k);
+    $('pane-' + k).hidden = !active;
+    tab.classList.toggle('active', active);
+    if (active) tab.setAttribute('aria-current', 'page');
+    else tab.removeAttribute('aria-current');
+  }
+  revealActiveTab();
+}
+
+function revealActiveTab() {
+  const tabs = $('pageTabs');
+  const tab = tabs.querySelector('[aria-current="page"]');
+  if (!tab) return;
+  const viewport = tabs.getBoundingClientRect();
+  const button = tab.getBoundingClientRect();
+  if (button.left < viewport.left) {
+    tabs.scrollLeft += button.left - viewport.left - 3;
+  } else if (button.right > viewport.right) {
+    tabs.scrollLeft += button.right - viewport.right + 3;
   }
 }
+
+new ResizeObserver(revealActiveTab).observe($('pageTabs'));
 
 function switchTab(which, updateUrl = true) {
   if (updateUrl && which !== tabFromUrl()) {
@@ -701,6 +738,8 @@ function switchTab(which, updateUrl = true) {
     url.searchParams.delete('open');
     url.searchParams.delete('open_task');
     history.pushState(null, '', url);
+    document.querySelector('main').scrollTop = 0;
+    window.scrollTo(0, 0);
   }
   activateTab(which);
   if (which === 'task') return loadTasks();
@@ -774,9 +813,9 @@ function renderScheduleStudent() {
   if (list) list.textContent = S.student ? `　·　学号 ${S.student}` : '';
   const p = scheduleProject();
   if (!S.student) {
-    el.textContent = '请选择左侧学号';
+    el.textContent = '请选择学号';
     el.style.color = '#ffb020';
-    hint.textContent = '先在左侧学号栏选中一个学号；这里只显示该学号的定时任务。';
+    hint.textContent = '选择学号后会显示该学号的定时任务。';
     hint.style.color = '#ffb020';
   } else if (!p) {
     el.textContent = S.student;
@@ -897,7 +936,7 @@ function formatDaysOfWeek(days) {
 function renderScheduleList() {
   const box = $('scheduleList');
   if (!S.student) {
-    box.innerHTML = '<div class="hint">先在左侧学号栏选中一个学号。</div>';
+    box.innerHTML = '<div class="hint">请先选择学号。</div>';
     return;
   }
   if (!SCH.items.length) {
@@ -923,14 +962,17 @@ function renderScheduleList() {
     const timeLabel = s.time_of_day ? (s.time_of_day.includes('-') ? `${s.time_of_day.replace('-', ' ~ ')}（随机范围）` : s.time_of_day) : '07:00 ~ 08:00（随机范围）';
     return `<div class="runitem ${s.id === SCH.editing ? 'active' : ''}">
       <span class="st ${s.enabled ? 'st-running' : 'st-stopped'}">${s.enabled ? '启用' : '停用'}</span>
-      <div style="flex:1"><div><b>${stu}</b>${label}</div>
+      <div class="run-description"><div><b>${stu}</b>${label}</div>
         <div class="meta">${dayLabel} ${timeLabel} · 下次 ${next} · 上次 ${last}${skipped}</div>
         <div class="meta">${o.mode === 'dry' ? '离线演练' : '真实运行'} · ${o.task_folder || '?'}/${grpLabel}${lastPick}${o.face_photo ? ' · 人脸 ' + o.face_photo : ''}</div>
         ${s.last_error ? `<div class="detail" style="color:#ff8a8a">${s.last_error}</div>` : ''}</div>
-      <button onclick="editSchedule('${s.id}')">修改</button>
-      <button onclick="toggleSchedule('${s.id}',${!s.enabled})">${s.enabled ? '停用' : '启用'}</button>
-      <button onclick="runScheduleNow('${s.id}')">立即运行</button>
-      <button class="danger" onclick="deleteSchedule('${s.id}')">删除</button></div>`;
+      <div class="run-actions">
+        <button onclick="editSchedule('${s.id}')">修改</button>
+        <button onclick="toggleSchedule('${s.id}',${!s.enabled})">${s.enabled ? '停用' : '启用'}</button>
+        <button onclick="runScheduleNow('${s.id}')">立即运行</button>
+        <button class="danger" onclick="deleteSchedule('${s.id}')">删除</button>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -1023,7 +1065,7 @@ function renderScheduleDetectOptions() {
   $('schDetect').innerHTML = `<option value="${p.student}/${p.stem}.json">${p.stem}.json${p.ann ? '' : '（不存在）'}</option>`;
 }
 async function saveSchedule() {
-  if (!S.student) { alert('请先在左侧学号栏选择学号'); return; }
+  if (!S.student) { alert('请先选择学号'); return; }
   const p = scheduleProject();
   if (!p) { alert(`学号 ${S.student} 没有账号项目（缺 config.ini），无法创建定时任务`); return; }
   if (!$('schFolder').value || !$('schTask').value) {
@@ -1287,7 +1329,7 @@ function renderRunList() {
   if (!box) return;
   const scroll = box.scrollTop;
   if (!R.runs || !R.runs.length) {
-    box.innerHTML = '<div class="hint">还没有运行过。左边选好配置与任务表，点『启动』。</div>';
+    box.innerHTML = '<div class="hint">还没有运行记录。选择配置与任务表后，点击“启动运行”。</div>';
     return;
   }
   box.innerHTML = groupRunsByDate(R.runs).map(g => {
@@ -1306,7 +1348,7 @@ function renderRunList() {
       ${g.runs.map(r => `
     <div class="runitem ${r.id === R.cur ? 'active' : ''}" onclick="viewRun('${r.id}')">
       <span class="st st-${r.status}">${statusLabel(r)}</span>
-      <div style="flex:1">
+      <div class="run-description">
         <div>${r.id}　<span class="meta">${r.mode === 'dry' ? '离线演练' : '真实运行'}</span></div>
         <div class="meta">${r.project || ''} · ${r.task_folder || '?'}/${r.task_file || '随机'}
           · ${r.elapsed}s${r.returncode !== null ? ' · 退出码 ' + r.returncode : ''}</div>
@@ -2202,11 +2244,14 @@ function routeTaskFill() {
 
 function routeSchemeChanged() {
   const deform = $('routeScheme').value === 'deform';
-  $('routeTask').hidden = deform;
-  $('routeCampus').hidden = deform;
-  $('routeSource').hidden = !deform;
-  $('routeSeed').hidden = !deform;
-  $('routeInterval').hidden = !deform;
+  for (const [ids, hidden] of [[['routeTask', 'routeCampus'], deform],
+                              [['routeSource', 'routeSeed', 'routeInterval'], !deform]]) {
+    for (const id of ids) {
+      const field = $(id);
+      field.hidden = hidden;
+      field.previousElementSibling.hidden = hidden;
+    }
+  }
   $('routeHint').textContent = deform
     ? '方案 2 会基于底图生成新的几何轨迹，随机种子相同即可复现。'
     : '方案 1 直接预览所选任务表，执行时会锁定同一张表。';

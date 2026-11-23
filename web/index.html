@@ -157,6 +157,7 @@ html[data-theme="dark"] {
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -238,6 +239,8 @@ button:disabled {
 }
 
 input, select {
+  min-width: 0;
+  max-width: 100%;
   font-family: var(--font-sans);
   font-size: 13px;
   background: var(--bg-input);
@@ -260,8 +263,9 @@ a:hover { text-decoration: underline; }
 /* 整体网格布局 */
 #app {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: clamp(220px, 19vw, 260px) minmax(0, 1fr);
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -310,6 +314,13 @@ aside {
   color: var(--fg-dim);
   font-weight: 500;
 }
+.account-toggle { display: none; }
+.account-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
 .aside-search {
   margin-bottom: 10px;
 }
@@ -351,6 +362,9 @@ aside {
   border: 1px solid transparent;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  width: 100%;
+  text-align: left;
+  box-shadow: none;
 }
 .stu:hover {
   background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
@@ -380,6 +394,8 @@ aside {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .stu span::before {
   content: "ID";
@@ -404,6 +420,7 @@ aside {
   box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
 }
 .stu small {
+  flex-shrink: 0;
   color: var(--fg-dim);
   font-size: 11px;
   background: light-dark(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.25));
@@ -426,9 +443,10 @@ aside {
 
 /* 主内容区 */
 main {
-  height: 100vh;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scroll-padding-top: 66px;
   padding: 16px 24px;
   display: flex;
   flex-direction: column;
@@ -440,7 +458,7 @@ section {
   flex-shrink: 0;
 }
 
-/* 导航标签条：必须 flex-shrink: 0 防内容撑大时被压缩；sticky 保持置顶可见 */
+/* 页签可单独横向滚动，主题按钮留在工具栏内。 */
 .tabs {
   display: flex;
   gap: 6px;
@@ -450,8 +468,6 @@ section {
   border-radius: var(--radius-lg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  overflow-x: auto;
-  overflow-y: hidden;
   box-shadow: var(--shadow-card);
   flex-shrink: 0;
   position: sticky;
@@ -460,6 +476,14 @@ section {
   min-height: 48px;
   box-sizing: border-box;
   align-items: center;
+}
+.tab-list {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  padding: 3px;
+  overflow-x: auto;
 }
 .tab {
   background: transparent;
@@ -559,6 +583,8 @@ header h1 {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .spacer { flex: 1; }
 .paths {
@@ -589,10 +615,9 @@ header h1 {
 }
 .rungrid {
   display: grid;
-  grid-template-columns: minmax(400px, 1.15fr) minmax(360px, 0.85fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   gap: 16px;
 }
-@media(max-width: 1100px) { .rungrid { grid-template-columns: 1fr; } }
 
 /* 表格现代设计 */
 table {
@@ -605,6 +630,12 @@ table {
   overflow: hidden;
   box-shadow: var(--shadow-card);
 }
+.table-scroll {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+}
+.photo-table { min-width: 660px; }
+.task-table { min-width: 760px; }
 th, td {
   text-align: left;
   padding: 10px 12px;
@@ -678,7 +709,7 @@ img.tn:hover {
 
 .mono { font-family: var(--font-mono); font-size: 12px; }
 .detail { font-size: 12px; color: var(--fg-muted); max-width: 440px; }
-.hint { font-size: 12px; color: var(--fg-dim); }
+.hint { font-size: 12px; color: var(--fg-dim); overflow-wrap: anywhere; }
 
 /* 运行实例列表 */
 .runitem {
@@ -748,6 +779,9 @@ img.tn:hover {
   50% { opacity: 0.3; transform: scale(0.7); }
 }
 .runitem .meta { color: var(--fg-dim); font-size: 12px; }
+.run-description { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.run-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.runitem .st, .runitem > button { flex-shrink: 0; }
 
 /* 运行实例按日期分组：新的日期在上，标题可折叠，滚动时吸顶 */
 .rungroup + .rungroup { margin-top: 12px; }
@@ -807,7 +841,7 @@ button.rungroup-toggle:active {
 /* 运行实例与历史记录列表 */
 #rList, #historyRuns {
   max-height: 500px;
-  overflow-y: auto;
+  overflow: auto;
 }
 
 /* 运行日志输出窗口 */
@@ -875,15 +909,16 @@ button.rungroup-toggle:active {
   font-size: 12px;
   line-height: 1.55;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   color: #cbd5e1;
 }
 
 /* 路线与画布 */
 .routegrid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr); gap: 16px; }
 .routecanvas {
+  display: block;
   width: 100%;
   height: auto;
-  min-height: 360px;
   background: var(--bg-terminal);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -891,13 +926,23 @@ button.rungroup-toggle:active {
 }
 .routemap {
   width: 100%;
-  height: 520px;
+  height: clamp(240px, 60vh, 520px);
   background: #e9eef2;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
   position: relative;
 }
+#mapTestHost { height: clamp(220px, 48vh, 380px); }
+.map-test-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.map-test-heading .badge { white-space: normal; }
 
 /* 地图配置提供商与网格 */
 .mapcfg-grid {
@@ -907,7 +952,7 @@ button.rungroup-toggle:active {
 }
 .provider-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 12px;
   margin-top: 6px;
 }
@@ -952,6 +997,9 @@ button.rungroup-toggle:active {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
+}
+.provider-card.active .provider-header {
   padding-right: 64px;
 }
 .provider-name {
@@ -1037,10 +1085,10 @@ button.rungroup-toggle:active {
 /* 历史导入布局 */
 .history-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
-.history-list table { font-size: 12px; }
+.history-list table { font-size: 12px; min-width: 340px; }
 .history-preview pre {
   white-space: pre-wrap;
   word-break: break-word;
@@ -1053,7 +1101,6 @@ button.rungroup-toggle:active {
   font-family: var(--font-mono);
   font-size: 12px;
 }
-@media(max-width: 900px) { .history-layout { grid-template-columns: 1fr; } }
 
 /* 项目配置卡片 */
 .cfg-section {
@@ -1074,27 +1121,33 @@ button.rungroup-toggle:active {
 }
 .cfg-grid {
   display: grid;
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
   gap: 10px 14px;
   align-items: center;
 }
-@media(max-width: 1000px) {
-  .routegrid { grid-template-columns: 1fr; }
-  .cfg-grid { grid-template-columns: 1fr; }
-}
+.cfg-grid label { overflow-wrap: anywhere; }
 
 /* 键值对表格 */
 .kv {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: fit-content(40%) minmax(0, 1fr);
   gap: 8px 16px;
   font-size: 13px;
   margin-bottom: 12px;
   align-items: center;
 }
+.kv-pairs { grid-template-columns: repeat(2, 100px minmax(0, 1fr)); }
+.kv > * { min-width: 0; overflow-wrap: anywhere; }
+.form-wide { grid-column: 2 / -1; }
+.time-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+.time-range span { color: var(--fg-muted); }
 .kv b { color: var(--fg-muted); font-weight: 500; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media(max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 
 /* 模态对话框 */
 dialog {
@@ -1103,10 +1156,14 @@ dialog {
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: 0;
-  max-width: 94vw;
-  max-height: 94vh;
+  width: min(1120px, calc(100% - 24px));
+  max-width: none;
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
   box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-subtle);
 }
+dialog[open] { display: flex; flex-direction: column; }
 dialog::backdrop {
   background: light-dark(rgba(15, 23, 42, 0.45), rgba(4, 7, 13, 0.75));
   backdrop-filter: blur(8px);
@@ -1115,16 +1172,21 @@ dialog::backdrop {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
   background: light-dark(rgba(0, 0, 0, 0.02), rgba(255, 255, 255, 0.02));
 }
 .dlg-head h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--fg); }
-.dlg-body { padding: 18px; overflow: auto; max-height: 74vh; }
+.dlg-body { padding: 18px; overflow: auto; min-height: 0; }
 .dlg-foot {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  flex-shrink: 0;
   padding: 12px 18px;
   border-top: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.02);
@@ -1135,13 +1197,13 @@ dialog::backdrop {
   position: relative;
   display: inline-block;
   line-height: 0;
-  touch-action: none;
+  max-width: 100%;
   box-shadow: var(--shadow-md);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 #stage img {
-  max-width: min(1100px, 80vw);
+  max-width: 100%;
   max-height: 60vh;
   width: auto;
   height: auto;
@@ -1153,7 +1215,7 @@ dialog::backdrop {
   position: absolute;
   width: 16px;
   height: 16px;
-  margin: -8px 0 0 -8px;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: #10b981;
   border: 2px solid #090d16;
@@ -1161,6 +1223,7 @@ dialog::backdrop {
   cursor: grab;
   box-shadow: 0 0 8px #10b981;
 }
+.ov .box, .ov .pt { touch-action: none; }
 .ov .gline { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(96, 165, 250, 0.85); }
 .ov .gv { position: absolute; top: 0; bottom: 0; border-left: 1px dashed rgba(45, 212, 191, 0.8); }
 
@@ -1176,11 +1239,113 @@ img.zoom {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
+
+@media (max-width: 1120px) {
+  .rungrid, .history-layout, .routegrid { grid-template-columns: minmax(0, 1fr); }
+  .kv-pairs { grid-template-columns: fit-content(40%) minmax(0, 1fr); }
+  .runitem { flex-wrap: wrap; }
+  .run-actions { flex-basis: 100%; }
+}
+
+@media (max-width: 900px) {
+  html { scroll-padding-top: 66px; }
+  #app { display: block; height: auto; overflow: visible; }
+  aside {
+    padding: 10px 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { margin: 0; padding: 0; border: 0; min-height: 44px; }
+  .account-toggle {
+    display: inline-flex;
+    margin-left: auto;
+    min-width: 0;
+    max-width: 50%;
+  }
+  .account-toggle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .account-toggle svg { flex-shrink: 0; }
+  .account-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+  aside:has(.account-toggle[aria-expanded="false"]) .account-panel { display: none; }
+  .account-panel { padding-top: 12px; }
+  #stus { max-height: min(30vh, 220px); flex: 0 1 auto; }
+  main { overflow: visible; padding: 10px 14px 18px; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (min-width: 720px) and (max-width: 900px) {
+  .kv-pairs { grid-template-columns: repeat(2, 96px minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  body { background-attachment: scroll; }
+  main { padding-inline: 10px; gap: 12px; }
+  .tabs { padding: 4px 6px; gap: 4px; }
+  .tab { padding-inline: 10px; }
+  .theme-toggle { min-width: 44px; padding-inline: 8px; }
+  #themeText { display: none; }
+  header { column-gap: 8px; row-gap: 6px; }
+  header .spacer, .dlg-head .spacer { display: none; }
+  header h1 { flex-basis: 100%; }
+  .runbox, .routebox, .history-list, .history-preview, .cfg-section { padding: 12px; }
+  .kv, .cfg-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .form-wide { grid-column: auto; }
+  .dlg-head, .dlg-body, .dlg-foot { padding: 10px 12px; }
+  .dlg-head h3 { flex-basis: 100%; }
+  .runlog { height: 260px; }
+
+  .photo-table {
+    display: block;
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .photo-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .photo-table tbody { display: grid; gap: 10px; }
+  .photo-table tr {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px 12px;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .photo-table td { border: 0; padding: 0; min-width: 0; overflow-wrap: anywhere; }
+  .photo-table .photo-thumb { grid-row: span 2; }
+  .photo-table .tn { width: 64px; height: 64px; }
+  .photo-table .photo-status, .photo-table .photo-check, .photo-table .ops,
+  .photo-table .photo-empty { grid-column: 1 / -1; }
+  .photo-table td[data-label]::before {
+    content: attr(data-label);
+    color: var(--fg-muted);
+    font-size: 12px;
+    margin-right: 8px;
+  }
+  .photo-table .ops { display: flex; flex-wrap: wrap; gap: 6px; }
+}
+
+@media (pointer: coarse), (max-width: 640px) {
+  button, .tab, .theme-toggle { min-height: 44px; }
+  input:not([type="checkbox"]), select, .aside-search input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  #schDaysBox label { min-height: 44px; }
+  .ov .pt { width: 22px; height: 22px; }
+}
 </style>
 </head>
 <body>
 <div id="app">
-  <aside>
+  <aside aria-label="学号账号">
     <div class="brand">
       <div class="brand-logo">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
@@ -1189,61 +1354,70 @@ img.zoom {
         <div class="brand-title">Yun2Face</div>
         <div class="brand-sub">Console · 安邮专业版</div>
       </div>
+      <button id="accountToggle" class="account-toggle" type="button" aria-expanded="false"
+              aria-controls="accountPanel" onclick="toggleAccountPanel()">
+        <span id="accountLabel">选择学号</span>
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor"
+             stroke-width="1.5" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+      </button>
     </div>
-    <div class="aside-search">
-      <input id="stuSearch" type="text" placeholder="🔍 搜索学号..." oninput="filterStudents(this.value)">
-    </div>
-    <div class="aside-sec-head">
-      <span>学号账号列表</span>
-      <span id="stuCount" class="badge b-dim">0</span>
-    </div>
-    <div id="stus"></div>
-    <div class="aside-actions">
-      <button class="primary" style="flex:1" onclick="newStudent()">+ 新建</button>
-      <button onclick="renameStudent()">改名</button>
-      <button class="danger" onclick="deleteStudent()">删</button>
+    <div id="accountPanel" class="account-panel">
+      <div class="aside-search">
+        <input id="stuSearch" type="text" aria-label="搜索学号" placeholder="🔍 搜索学号..." oninput="filterStudents(this.value)">
+      </div>
+      <div class="aside-sec-head">
+        <span>学号账号列表</span>
+        <span id="stuCount" class="badge b-dim">0</span>
+      </div>
+      <div id="stus"></div>
+      <div class="aside-actions">
+        <button class="primary" style="flex:1" onclick="newStudent()">+ 新建</button>
+        <button onclick="renameStudent()">改名</button>
+        <button class="danger" onclick="deleteStudent()">删除</button>
+      </div>
     </div>
   </aside>
 
   <main>
     <div class="tabs">
-      <button id="tab-face" class="tab active" onclick="switchTab('face')">
-        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><path d="M8 15s1.5 2 4 2 4-2 4-2"/></svg>
-        <span>人脸素材</span>
-      </button>
-      <button id="tab-stats" class="tab" onclick="switchTab('stats')">
-        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-        <span>学期统计</span>
-      </button>
-      <button id="tab-history" class="tab" onclick="switchTab('history')">
-        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>历史导入</span>
-      </button>
-      <button id="tab-task" class="tab" onclick="switchTab('task')">
-        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        <span>跑步任务</span>
-      </button>
-      <button id="tab-run" class="tab" onclick="switchTab('run')">
-        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        <span>运行控制</span>
-      </button>
-      <button id="tab-schedule" class="tab" onclick="switchTab('schedule')">
-        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span>定时运行</span>
-      </button>
-      <button id="tab-route" class="tab" onclick="switchTab('route')">
-        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a4.5 4.5 0 0 0 0-9H5a3 3 0 0 1 0-6h13"/><circle cx="18" cy="4" r="3"/></svg>
-        <span>路线预览</span>
-      </button>
-      <button id="tab-mapcfg" class="tab" onclick="switchTab('mapcfg')">
-        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-        <span>地图配置</span>
-      </button>
-      <button id="tab-config" class="tab" onclick="switchTab('config')">
-        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span>项目配置</span>
-      </button>
-      <div style="flex:1"></div>
+      <nav id="pageTabs" class="tab-list" aria-label="控制台页面">
+        <button id="tab-face" class="tab active" aria-current="page" onclick="switchTab('face')">
+          <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><path d="M8 15s1.5 2 4 2 4-2 4-2"/></svg>
+          <span>人脸素材</span>
+        </button>
+        <button id="tab-stats" class="tab" onclick="switchTab('stats')">
+          <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          <span>学期统计</span>
+        </button>
+        <button id="tab-history" class="tab" onclick="switchTab('history')">
+          <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>历史导入</span>
+        </button>
+        <button id="tab-task" class="tab" onclick="switchTab('task')">
+          <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>跑步任务</span>
+        </button>
+        <button id="tab-run" class="tab" onclick="switchTab('run')">
+          <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>运行控制</span>
+        </button>
+        <button id="tab-schedule" class="tab" onclick="switchTab('schedule')">
+          <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>定时运行</span>
+        </button>
+        <button id="tab-route" class="tab" onclick="switchTab('route')">
+          <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a4.5 4.5 0 0 0 0-9H5a3 3 0 0 1 0-6h13"/><circle cx="18" cy="4" r="3"/></svg>
+          <span>路线预览</span>
+        </button>
+        <button id="tab-mapcfg" class="tab" onclick="switchTab('mapcfg')">
+          <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          <span>地图配置</span>
+        </button>
+        <button id="tab-config" class="tab" onclick="switchTab('config')">
+          <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>项目配置</span>
+        </button>
+      </nav>
       <button id="themeToggle" class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="切换浅色/深色模式" title="切换浅色/深色主题">
         <span class="theme-icon-sun" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -1258,7 +1432,7 @@ img.zoom {
     <!-- 1. 人脸素材 -->
     <section id="pane-face">
       <header>
-        <h1 id="title">请选择左侧学号</h1>
+        <h1 id="title">请选择学号</h1>
         <span id="detect" class="badge b-dim"></span>
         <div class="spacer"></div>
         <button onclick="loadImages()">刷新素材</button>
@@ -1268,20 +1442,22 @@ img.zoom {
         <input id="up" type="file" accept="image/*" multiple hidden onchange="uploadPicked(this)">
       </header>
       <div class="paths" id="paths"></div>
-      <table>
-        <thead><tr>
-          <th style="width:86px">预览</th><th>文件名</th><th style="width:150px">尺寸 / 体积</th>
-          <th style="width:120px">标注状态</th><th style="width:150px">质量预检</th><th style="width:340px">操作</th>
-        </tr></thead>
-        <tbody id="rows"><tr><td colspan="6" class="hint" style="padding:18px;text-align:center">暂无数据</td></tr></tbody>
-      </table>
+      <div class="table-scroll" role="region" aria-label="照片列表" tabindex="0">
+        <table class="photo-table" role="table">
+          <thead role="rowgroup"><tr role="row">
+            <th scope="col" style="width:86px">预览</th><th scope="col">文件名</th><th scope="col" style="width:150px">尺寸 / 体积</th>
+            <th scope="col" style="width:120px">标注状态</th><th scope="col" style="width:150px">质量预检</th><th scope="col" style="width:340px">操作</th>
+          </tr></thead>
+          <tbody id="rows" role="rowgroup"><tr role="row"><td role="cell" colspan="6" class="photo-empty hint" style="padding:18px;text-align:center">暂无数据</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- 2. 学期统计 -->
     <section id="pane-stats" hidden>
       <header>
         <h1>学期统计</h1>
-        <span class="hint" id="statsStudent">请选择左侧学号</span>
+        <span class="hint" id="statsStudent">请选择学号</span>
         <div class="spacer"></div>
         <button class="primary" onclick="loadStatistics()">刷新统计</button>
       </header>
@@ -1296,12 +1472,12 @@ img.zoom {
     <section id="pane-history" hidden>
       <header>
         <h1>历史记录导入</h1>
-        <span class="hint" id="historyStudent">请选择左侧学号</span>
+        <span class="hint" id="historyStudent">请选择学号</span>
         <div class="spacer"></div>
         <button onclick="loadHistoryTerms()">读取学期</button>
       </header>
       <div class="runbox">
-        <div class="kv" style="grid-template-columns:100px 1fr 100px 1fr">
+        <div class="kv kv-pairs">
           <b>学期</b><select id="historyTerm" onchange="loadHistoryRuns()"></select>
           <b>状态</b><span id="historyMessage" class="hint">先选择学号，再读取学期。</span>
         </div>
@@ -1328,14 +1504,16 @@ img.zoom {
         <button onclick="document.getElementById('upt').click()">导入任务表</button>
         <input id="upt" type="file" accept=".json,application/json" multiple hidden onchange="uploadTasks(this)">
       </header>
-      <table>
-        <thead><tr>
-          <th>文件</th><th style="width:72px">组别</th><th style="width:120px">里程 / 时长</th><th style="width:110px">配速 / 步频</th>
-          <th style="width:80px">点数</th><th style="width:70px">围栏</th>
-          <th style="width:150px">自洽校验</th><th style="width:330px">操作</th>
-        </tr></thead>
-        <tbody id="trows"></tbody>
-      </table>
+      <div class="table-scroll" role="region" aria-label="跑步任务表" tabindex="0">
+        <table class="task-table">
+          <thead><tr>
+            <th>文件</th><th style="width:72px">组别</th><th style="width:120px">里程 / 时长</th><th style="width:110px">配速 / 步频</th>
+            <th style="width:80px">点数</th><th style="width:70px">围栏</th>
+            <th style="width:150px">自洽校验</th><th style="width:330px">操作</th>
+          </tr></thead>
+          <tbody id="trows"></tbody>
+        </table>
+      </div>
       <dialog id="taskDlg">
         <div class="dlg-head">
           <h3 id="taskTitle">任务表</h3>
@@ -1358,7 +1536,7 @@ img.zoom {
                 口径同项目 tools/pace_changer 与 tools/drift：配速缩放只允许<b>变慢</b>（factor≤1），
                 漂移是全表同向微移；里程会按新坐标重算以保持表内自洽。
               </div>
-              <div class="kv" style="grid-template-columns:auto 1fr">
+              <div class="kv">
                 <b>组别归属</b>
                 <select id="taskDlgGroup" onchange="changeCurrentTaskGroup(this.value)">
                   <option value="">未分组</option>
@@ -1400,7 +1578,7 @@ img.zoom {
       <div class="rungrid">
         <div class="runbox">
           <h4>新建运行任务</h4>
-          <div class="kv" style="grid-template-columns:86px 1fr">
+          <div class="kv">
             <b>模式</b>
             <select id="rMode" onchange="onModeChange()">
               <option value="dry">离线演练（--dry-run，不建服务端记录）</option>
@@ -1440,20 +1618,20 @@ img.zoom {
     <section id="pane-schedule" hidden>
       <header>
         <h1>定时运行</h1>
-        <span class="hint">学号取左侧学号栏的选中项，列表只显示该学号的定时任务；错过的运行不补跑（晚于计划时间超过 15 分钟直接顺延到下一次）</span>
+        <span class="hint">列表按选中的学号筛选。错过的运行不补跑，晚于计划时间超过 15 分钟时顺延到下一次。</span>
         <span class="hint" id="schTZ"></span>
         <div class="spacer"></div><button onclick="loadSchedules()">刷新</button>
       </header>
       <div class="runbox">
         <h4 id="schFormTitle">新建定时任务</h4>
         <div id="schEditHint" class="hint" style="margin:-4px 0 8px"></div>
-        <div class="kv" style="grid-template-columns:100px 1fr 100px 1fr">
-          <b>学号</b><span id="schStudent" class="mono">请选择左侧学号</span>
+        <div class="kv kv-pairs">
+          <b>学号</b><span id="schStudent" class="mono">请选择学号</span>
           <b>运行时间范围</b>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input id="schTimeStart" type="time" value="07:00" style="flex:1">
-            <span style="color:var(--text-muted);font-weight:600">至</span>
-            <input id="schTimeEnd" type="time" value="08:00" style="flex:1">
+          <div class="time-range">
+            <input id="schTimeStart" type="time" value="07:00" aria-label="开始时间">
+            <span>至</span>
+            <input id="schTimeEnd" type="time" value="08:00" aria-label="结束时间">
           </div>
           <b>名称（可选）</b><input id="schName" placeholder="默认用学号，如：晨跑 / 夜跑">
           <b>模式</b><select id="schMode"><option value="dry">离线演练</option><option value="real">真实运行</option></select>
@@ -1462,7 +1640,7 @@ img.zoom {
           <b>人脸照片</b><select id="schPhoto" onchange="renderScheduleDetectOptions()"></select>
           <b>人脸 JSON</b><select id="schDetect"></select>
           <b>每周运行日</b>
-          <div style="grid-column: 2 / -1; display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+          <div class="form-wide" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
             <div id="schDaysBox" style="display:inline-flex; gap:10px; align-items:center; flex-wrap:wrap">
               <label style="display:inline-flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" name="schDay" value="1" checked style="width:auto">周一</label>
               <label style="display:inline-flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" name="schDay" value="2" checked style="width:auto">周二</label>
@@ -1503,16 +1681,16 @@ img.zoom {
         <button class="primary" onclick="previewRoute()">生成预览</button>
       </header>
       <div class="routebox">
-        <div class="kv" style="grid-template-columns:110px 1fr 110px 1fr">
+        <div class="kv kv-pairs">
           <b>方案</b><select id="routeScheme" onchange="routeSchemeChanged()">
             <option value="base">打表回放（原始任务表）</option>
             <option value="deform">轨迹合成（Deform）</option>
           </select>
           <b>校区</b><select id="routeCampus" onchange="routeTaskFill()"></select>
           <b>任务表</b><select id="routeTask"></select>
-          <b>底图 JSON</b><select id="routeSource" hidden></select>
-          <b>随机种子</b><input id="routeSeed" type="number" value="31337" hidden>
-          <b>采样间隔 / s</b><input id="routeInterval" type="number" value="2" min="1" hidden>
+          <b hidden>底图 JSON</b><select id="routeSource" hidden></select>
+          <b hidden>随机种子</b><input id="routeSeed" type="number" value="31337" hidden>
+          <b hidden>采样间隔 / s</b><input id="routeInterval" type="number" value="2" min="1" hidden>
         </div>
         <div id="routeHint" class="hint" style="margin-top:8px">默认使用 tasks_fch/tasklist_0.json。</div>
       </div>
@@ -1600,9 +1778,9 @@ img.zoom {
           <div class="map-params-grid">
             <!-- 地图类型选择框 -->
             <div class="kv" style="margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
-              <b style="min-width: 110px;">底图图层类型：</b>
+              <b>底图图层类型：</b>
               <div style="display: flex; gap: 10px; align-items: center; flex: 1; flex-wrap: wrap;">
-                <select id="cfg_map_type" onchange="onMapTypeChanged(this.value)" style="min-width: 220px; font-weight: 500;">
+                <select id="cfg_map_type" onchange="onMapTypeChanged(this.value)" style="font-weight: 500;">
                   <!-- 根据当前地图提供商动态注入允许使用的图层 -->
                 </select>
                 <span id="mapTypeDesc" class="hint"></span>
@@ -1669,11 +1847,11 @@ img.zoom {
 
         <!-- 实时测试与预览容器 -->
         <div class="cfg-section">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+          <div class="map-test-heading">
             <h3 style="margin: 0; border: none; padding: 0;">地图实时连通性与测试预览</h3>
             <span id="mapTestBadge" class="badge b-dim">点击上方“测试连通性与渲染”进行诊断</span>
           </div>
-          <div id="mapTestHost" class="routemap" style="height: 380px;"></div>
+          <div id="mapTestHost" class="routemap"></div>
         </div>
       </div>
     </section>
@@ -1744,7 +1922,7 @@ img.zoom {
     </div>
   </div>
   <div class="dlg-foot">
-    <button onclick="closeEdit()">关闭</button>
+    <button onclick="closeEdit()" autofocus>关闭</button>
     <button class="primary" onclick="saveAnnotation()">保存并预检</button>
   </div>
 </dialog>
